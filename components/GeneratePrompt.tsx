@@ -17,16 +17,11 @@ export default function GeneratePrompt({ onSaved }: Props) {
   const [message, setMessage] = useState<string>("");
 
   const onPick = () => fileRef.current?.click();
-
-  const onFile = (f: File | null) => {
-    setFile(f);
-  };
+  const onFile = (f: File | null) => setFile(f);
 
   const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      onFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]);
   };
 
   const generate = async () => {

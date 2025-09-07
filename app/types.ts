@@ -5,7 +5,7 @@ export type Prompt = {
   author: string;
   description: string;
   imageUrl: string;
-  promptText: string; // required everywhere
+  promptText: string; // required
   favorite: boolean;
-  createdAt: string;  // ISO string
+  createdAt: string;  // ISO
 };

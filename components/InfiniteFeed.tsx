@@ -38,24 +38,25 @@ export default function InfiniteFeed(props: Props) {
     [loading, done]
   );
 
-  // boot & fill
+  // Ensure we fill viewport on first load
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (cancelled) return;
       await loadPage(1);
-      setTimeout(() => {
-        if (!cancelled && document.body.scrollHeight <= window.innerHeight && !done) {
-          loadPage(2);
-        }
-      }, 300);
+      // Keep loading until we exceed viewport or we tried 4 pages
+      let tries = 0;
+      while (!cancelled && document.body.scrollHeight < window.innerHeight * 1.6 && tries < 3 && !done) {
+        await loadPage(tries + 2);
+        tries++;
+      }
     })();
     return () => {
       cancelled = true;
     };
   }, [loadPage, done]);
 
-  // IO on sentinel
+  // IntersectionObserver
   useEffect(() => {
     if (!sentinelRef.current || done) return;
     const io = new IntersectionObserver(
@@ -63,7 +64,7 @@ export default function InfiniteFeed(props: Props) {
         const first = entries[0];
         if (first.isIntersecting && !loading) loadPage(page + 1);
       },
-      { root: null, rootMargin: "800px 0px", threshold: 0 }
+      { root: null, rootMargin: "1200px 0px", threshold: 0 }
     );
     io.observe(sentinelRef.current);
     return () => io.disconnect();

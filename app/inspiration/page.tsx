@@ -7,13 +7,12 @@ import InfiniteFeed from "@/components/InfiniteFeed";
 import PromptGrid from "@/components/PromptGrid";
 import GeneratePrompt from "@/components/GeneratePrompt";
 import type { Prompt } from "@/app/types";
-import { readMine, writeMine, toggleFavorite, overwriteMine } from "@/lib/storage";
+import { readMine, writeMine, toggleFavorite } from "@/lib/storage";
 
 export default function InspirationPage() {
   const [tab, setTab] = useState<"all" | "mine">("all");
   const [mine, setMine] = useState<Prompt[]>([]);
 
-  // boot: load saved prompts
   useEffect(() => {
     setMine(readMine());
   }, []);
@@ -21,9 +20,7 @@ export default function InspirationPage() {
   const handleCopy = useCallback(async (p: Prompt) => {
     try {
       await navigator.clipboard.writeText(p.promptText);
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, []);
 
   const handleSave = useCallback((p: Prompt) => {
@@ -37,7 +34,6 @@ export default function InspirationPage() {
     setMine(updated);
   }, []);
 
-  // favorite first (alpha), then others by recency
   const mineSorted = useMemo(() => {
     const favs = mine.filter((m) => m.favorite).sort((a, b) => a.title.localeCompare(b.title));
     const rest = mine
@@ -59,12 +55,16 @@ export default function InspirationPage() {
         onChange={setTab}
       />
 
-      {/* Uploader / Generate */}
       <GeneratePrompt onSaved={handleSave} />
 
-      {/* Content */}
       {tab === "all" ? (
-        <InfiniteFeed onCopy={handleCopy} onSave={handleSave} onToggleFavorite={handleToggleFavorite} />
+        <div className="mt-6">
+          <InfiniteFeed
+            onCopy={handleCopy}
+            onSave={handleSave}
+            onToggleFavorite={handleToggleFavorite}
+          />
+        </div>
       ) : mineSorted.length ? (
         <div className="mt-6">
           <PromptGrid

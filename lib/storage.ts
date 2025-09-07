@@ -10,7 +10,6 @@ export function readMine(): Prompt[] {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as Prompt[];
-    // guard: ensure all have promptText
     return parsed.map((p) => ({
       ...p,
       promptText: typeof p.promptText === "string" ? p.promptText : "",

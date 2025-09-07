@@ -5,7 +5,7 @@ import type { Prompt } from "@/app/types";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, Number(searchParams.get("page") || "1"));
-  const perPage = 15;
+  const perPage = 30; // bigger so first load shows 10 rows
 
   const items: Prompt[] = Array.from({ length: perPage }).map((_, i) => {
     const idx = (page - 1) * perPage + i + 1;

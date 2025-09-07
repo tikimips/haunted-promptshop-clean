@@ -1,6 +1,5 @@
 // components/Tabs.tsx
 "use client";
-
 import clsx from "clsx";
 
 export type Tab = { value: "all" | "mine"; label: string };
