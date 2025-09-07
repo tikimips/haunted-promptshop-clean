@@ -1,29 +1,33 @@
 // components/Tabs.tsx
 "use client";
 
-export default function Tabs({
-  active,
-  onChange,
-  labels = ["All", "Prompt Library"],
-}: {
-  active: "all" | "mine";
-  onChange: (v: "all" | "mine") => void;
-  labels?: [string, string] | string[];
-}) {
+type Tab = { id: string; label: string };
+
+type Props = {
+  tabs: Tab[];
+  value: string;
+  onChange: (id: string) => void;
+};
+
+export default function Tabs({ tabs, value, onChange }: Props) {
   return (
-    <div className="mb-6 flex items-center gap-2">
-      <button
-        onClick={() => onChange("all")}
-        className={`rounded-full px-3 py-1 text-sm ${active === "all" ? "bg-black text-white" : "bg-neutral-100"}`}
-      >
-        {labels[0] ?? "All"}
-      </button>
-      <button
-        onClick={() => onChange("mine")}
-        className={`rounded-full px-3 py-1 text-sm ${active === "mine" ? "bg-black text-white" : "bg-neutral-100"}`}
-      >
-        {labels[1] ?? "Prompt Library"}
-      </button>
+    <div className="flex gap-2">
+      {tabs.map((t) => {
+        const active = t.id === value;
+        return (
+          <button
+            key={t.id}
+            onClick={() => onChange(t.id)}
+            className={`rounded-full border px-3 py-1 text-sm ${
+              active
+                ? "border-black bg-black text-white"
+                : "border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50"
+            }`}
+          >
+            {t.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
