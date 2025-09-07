@@ -1,18 +1,9 @@
-// components/PromptGrid.tsx
+import type { Prompt } from "@/app/types";
 import PromptCard from "./PromptCard";
-import { Prompt } from "../app/types";
 
-type Props = {
-  prompts: Prompt[];
-};
-
-export default function PromptGrid({ prompts }: Props) {
-  if (!prompts || prompts.length === 0) {
-    return <p className="text-neutral-500">No prompts yet.</p>;
-  }
-
+export default function PromptGrid({ prompts }: { prompts: Prompt[] }) {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {prompts.map((p) => (
         <PromptCard key={p.id} prompt={p} />
       ))}
