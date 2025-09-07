@@ -1,24 +1,20 @@
-// app/library/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import type { Prompt } from "@/app/types";
+import { useEffect, useMemo, useState } from "react";
 import PromptGrid from "@/components/PromptGrid";
+import type { Prompt } from "@/app/types";
+import { readMine } from "@/lib/storage";
 
 export default function LibraryPage() {
   const [mine, setMine] = useState<Prompt[]>([]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = localStorage.getItem("promptshop:mine");
-    if (raw) try { setMine(JSON.parse(raw)); } catch {}
-  }, []);
+  useEffect(() => setMine(readMine()), []);
 
-  const fav = mine.filter((m) => m.favorite).sort((a, b) => a.title.localeCompare(b.title));
-  const rest = mine
-    .filter((m) => !m.favorite)
-    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-  const sorted = [...fav, ...rest];
+  const sorted = useMemo(() => {
+    const favs = mine.filter((p) => p.favorite).sort((a, b) => a.title.localeCompare(b.title));
+    const rest = mine.filter((p) => !p.favorite).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return [...favs, ...rest];
+  }, [mine]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">

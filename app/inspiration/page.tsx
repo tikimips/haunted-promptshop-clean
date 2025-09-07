@@ -1,79 +1,79 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import GeneratePrompt from "@/components/GeneratePrompt";
 import InfiniteFeed from "@/components/InfiniteFeed";
 import PromptGrid from "@/components/PromptGrid";
-import { readMine, writeMine } from "@/lib/storage";
-import { loadFeedPage } from "@/lib/feed";
+import { Tabs } from "@/components/Tabs";
 import type { Prompt } from "@/app/types";
+import { readMine, writeMine, toggleFavorite } from "@/lib/storage";
+import { loadFeedPage } from "@/lib/feed";
 
 export default function InspirationPage() {
-  const [mine, setMine] = useState<Prompt[]>([]);
   const [tab, setTab] = useState<"all" | "mine">("all");
+  const [mine, setMine] = useState<Prompt[]>([]);
 
-  // Load saved prompts
-  useEffect(() => {
-    setMine(readMine());
+  useEffect(() => setMine(readMine()), []);
+
+  const handleSaved = useCallback((p: Prompt) => {
+    setMine(writeMine(p));
   }, []);
 
-  // Save a prompt
   const handleSave = useCallback((p: Prompt) => {
-    const updated = writeMine(p);
-    setMine(updated);
+    setMine(writeMine(p));
   }, []);
 
-  // Toggle favorite
   const handleToggleFavorite = useCallback((p: Prompt) => {
-    const updated = mine.map((item) =>
-      item.id === p.id ? { ...item, favorite: !item.favorite } : item
-    );
-    setMine(updated);
-    writeMine(updated);
+    setMine(toggleFavorite(p.id));
+  }, []);
+
+  const sortedMine = useMemo(() => {
+    // Favorites first (alphabetical by title), then the rest (newest first)
+    const favs = mine.filter((p) => p.favorite).sort((a, b) => a.title.localeCompare(b.title));
+    const rest = mine.filter((p) => !p.favorite).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return [...favs, ...rest];
   }, [mine]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       {/* Header */}
-      <h1 className="mb-8 text-3xl font-bold">Inspiration</h1>
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <h1 className="text-2xl font-bold">Inspiration</h1>
+        <Tabs
+          tabs={[
+            { value: "all", label: "All" },
+            { value: "mine", label: "Prompt Library" },
+          ]}
+          value={tab}
+          onChange={(v) => setTab(v as "all" | "mine")}
+        />
+      </div>
 
-      {/* Generate From Image / Notes */}
-      <GeneratePrompt onSaved={handleSave} />
-
-      {/* Tabs */}
-      <div className="mt-8 flex gap-4 border-b pb-2">
-        <button
-          className={`pb-2 ${tab === "all" ? "border-b-2 border-black font-semibold" : "text-gray-500"}`}
-          onClick={() => setTab("all")}
-        >
-          All
-        </button>
-        <button
-          className={`pb-2 ${tab === "mine" ? "border-b-2 border-black font-semibold" : "text-gray-500"}`}
-          onClick={() => setTab("mine")}
-        >
-          Prompt Library
-        </button>
+      {/* Generate */}
+      <div className="mt-6">
+        <GeneratePrompt onSaved={handleSaved} />
       </div>
 
       {/* Content */}
-      {tab === "all" ? (
-        <InfiniteFeed
-          loadPage={loadFeedPage}
-          onSave={handleSave}
-          onToggleFavorite={handleToggleFavorite}
-        />
-      ) : mine.length ? (
-        <PromptGrid
-          items={mine}
-          onSave={handleSave}
-          onToggleFavorite={handleToggleFavorite}
-        />
-      ) : (
-        <p className="py-10 text-center text-neutral-500">
-          Nothing saved yet. Go to <b>Inspiration</b> and use <b>Save</b> on any card.
-        </p>
-      )}
+      <div className="mt-10">
+        {tab === "all" ? (
+          <InfiniteFeed
+            loadPage={loadFeedPage}
+            onSave={handleSave}
+            onToggleFavorite={handleToggleFavorite}
+          />
+        ) : sortedMine.length ? (
+          <PromptGrid
+            items={sortedMine}
+            onSave={handleSave}
+            onToggleFavorite={handleToggleFavorite}
+          />
+        ) : (
+          <p className="py-10 text-center text-neutral-500">
+            Nothing saved yet. Use <b>Save</b> on any card to add it here.
+          </p>
+        )}
+      </div>
     </main>
   );
 }

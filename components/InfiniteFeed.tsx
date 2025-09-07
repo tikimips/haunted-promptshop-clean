@@ -1,71 +1,58 @@
-// components/InfiniteFeed.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import PromptGrid, { type Prompt } from "./PromptGrid";
+import PromptGrid from "./PromptGrid";
+import type { Prompt } from "@/app/types";
 
-type FeedLoader = (page: number) => Promise<Prompt[]>;
+export type FeedLoader = (page: number) => Promise<Prompt[]>;
 
 type Props = {
-  loadPage: FeedLoader;             // async loader returning Prompts
+  loadPage: FeedLoader;
   onCopy?: (p: Prompt) => void;
   onSave?: (p: Prompt) => void;
   onToggleFavorite?: (p: Prompt) => void;
 };
 
-export default function InfiniteFeed(props: Props) {
-  const { loadPage, ...passThrough } = props;
-
-  const [page, setPage] = useState(0);
+export default function InfiniteFeed({ loadPage, ...callbacks }: Props) {
+  const [page, setPage] = useState(1);
   const [items, setItems] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    let cancel = false;
-    (async () => {
-      if (loading || done) return;
+    let ignore = false;
+    const load = async () => {
       setLoading(true);
-      try {
-        const next = await loadPage(page);
-        if (!cancel) {
-          if (!next.length) setDone(true);
-          setItems((prev) => prev.concat(next));
-        }
-      } catch (e) {
-        console.error("feed load error", e);
-        if (!cancel) setDone(true);
-      } finally {
-        if (!cancel) setLoading(false);
+      const next = await loadPage(page).catch(() => []);
+      if (!ignore) {
+        if (next.length === 0) setDone(true);
+        setItems((prev) => [...prev, ...next]);
+        setLoading(false);
       }
-    })();
-    return () => {
-      cancel = true;
     };
-  }, [page, loadPage, loading, done]);
+    load();
+    return () => {
+      ignore = true;
+    };
+  }, [page, loadPage]);
 
   useEffect(() => {
     if (!sentinelRef.current || done) return;
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) {
-          setPage((p) => p + 1);
-        }
+    const node = sentinelRef.current;
+    const obs = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !loading && !done) {
+        setPage((p) => p + 1);
       }
-    });
-    io.observe(sentinelRef.current);
-    return () => io.disconnect();
-  }, [done]);
+    }, { rootMargin: "400px" });
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, [loading, done]);
 
   return (
     <>
-      <PromptGrid items={items} {...passThrough} />
-      <div
-        ref={sentinelRef}
-        className="py-6 text-center text-sm text-neutral-500"
-      >
+      <PromptGrid items={items} {...callbacks} />
+      <div ref={sentinelRef} className="py-6 text-center text-sm text-neutral-500">
         {done ? "— End —" : loading ? "Loading…" : "Scroll to load more"}
       </div>
     </>
