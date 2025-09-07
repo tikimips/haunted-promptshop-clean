@@ -2,57 +2,34 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-
-type DemoUser = { name: string } | null;
-const KEY = "demo-user";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
-  const [user, setUser] = useState<DemoUser>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) setUser(JSON.parse(raw));
-    } catch {}
-  }, []);
-
-  const signIn = () => {
-    const u = { name: "Demo User" };
-    localStorage.setItem(KEY, JSON.stringify(u));
-    setUser(u);
-  };
-  const signOut = () => {
-    localStorage.removeItem(KEY);
-    setUser(null);
+  const pathname = usePathname();
+  const link = (href: string, label: string) => {
+    const active = pathname === href;
+    return (
+      <Link
+        key={href}
+        href={href}
+        className={`px-3 py-1 rounded-full text-sm ${
+          active ? "bg-black text-white" : "text-neutral-700 hover:bg-neutral-100"
+        }`}
+      >
+        {label}
+      </Link>
+    );
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="/" className="text-lg font-bold">Haunted Promptshop</Link>
-        <nav className="flex items-center gap-4">
-          <Link href="/inspiration" className="text-sm hover:underline">Inspiration</Link>
-          <Link href="/library" className="text-sm hover:underline">Prompt Library</Link>
-
-          {user ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-600">Hi, {user.name}</span>
-              <button
-                className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
-                onClick={signOut}
-              >
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <button
-              className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
-              onClick={signIn}
-            >
-              Continue with Google (demo)
-            </button>
-          )}
+        <Link href="/" className="font-semibold">
+          Haunted Promptshop
+        </Link>
+        <nav className="flex items-center gap-2">
+          {link("/inspiration", "Inspiration")}
+          {link("/library", "Prompt Library")}
         </nav>
       </div>
     </header>
