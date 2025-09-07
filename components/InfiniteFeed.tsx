@@ -2,8 +2,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import FeedCard from './FeedCard';
-import type { FeedItem } from '@/app/api/feed/route';
+import FeedCard, { type FeedItem } from './FeedCard';
 
 const FAV_KEY = 'feed-favorites';
 const SAVE_KEY = 'myPrompts';
@@ -31,27 +30,29 @@ export default function InfiniteFeed() {
     setFavSet(loadFavs());
   }, []);
 
-  // fetch one page
-  const fetchPage = useCallback(async (p: number) => {
-    if (loading || !hasMore) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/feed?page=${p}`, { cache: 'no-store' });
-      const json = (await res.json()) as {
-        page: number;
-        pageSize: number;
-        items: FeedItem[];
-        hasMore: boolean;
-      };
-      setItems((prev) => [...prev, ...json.items]);
-      setHasMore(json.hasMore);
-      setPage(p);
-    } catch {
-      // ignore network hiccup; user can scroll to retry
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, hasMore]);
+  const fetchPage = useCallback(
+    async (p: number) => {
+      if (loading || !hasMore) return;
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/feed?page=${p}`, { cache: 'no-store' });
+        const json = (await res.json()) as {
+          page: number;
+          pageSize: number;
+          items: FeedItem[];
+          hasMore: boolean;
+        };
+        setItems((prev) => [...prev, ...json.items]);
+        setHasMore(json.hasMore);
+        setPage(p);
+      } catch {
+        // ignore; user can scroll again to retry
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loading, hasMore]
+  );
 
   // initial load
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function InfiniteFeed() {
           fetchPage(page + 1);
         }
       },
-      { rootMargin: '1200px' }
+      { rootMargin: '1000px' }
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -96,7 +97,8 @@ export default function InfiniteFeed() {
       imageUrl: item.imageUrl,
       favorite: false,
       createdAt: new Date().toISOString(),
-      prompt: `Create a concept inspired by "${item.title}" (${item.source}).`,
+      prompt: item.prompt ||
+        `Create a concept inspired by "${item.title || 'this piece'}" (${item.source}).`,
     };
     try {
       const list = JSON.parse(localStorage.getItem(SAVE_KEY) || '[]');
@@ -110,7 +112,8 @@ export default function InfiniteFeed() {
 
   const grid = useMemo(
     () => (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      // ✅ three across on md and up
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {items.map((item) => (
           <FeedCard
             key={item.id}
@@ -131,6 +134,9 @@ export default function InfiniteFeed() {
       <div ref={sentinelRef} className="h-16 w-full" />
       {(loading || !items.length) && (
         <div className="py-8 text-center text-neutral-500">Loading…</div>
+      )}
+      {!hasMore && (
+        <div className="py-8 text-center text-neutral-400">End of feed</div>
       )}
     </div>
   );

@@ -1,79 +1,102 @@
 // components/FeedCard.tsx
 'use client';
 
-import Image from 'next/image';
-import { CopyIcon, SaveIcon, HeartOutline, HeartSolid } from '@/components/icons';
-import type { FeedItem } from '@/app/api/feed/route';
+import { useCallback } from 'react';
 
-type Props = {
-  item: FeedItem;
-  onSave?: (item: FeedItem) => void;
-  onFavorite?: (id: string, next: boolean) => void;
-  isFavorite?: boolean;
+export type FeedItem = {
+  id: string;
+  title?: string;
+  author?: string;
+  source: string;     // e.g., 'dribbble', 'behance', 'unsplash'
+  imageUrl: string;   // absolute URL
+  prompt?: string;    // optional suggested prompt text
 };
 
-function copyToClipboard(text: string) {
-  try {
-    navigator.clipboard?.writeText(text);
-  } catch {}
-}
-
-export default function FeedCard({ item, onSave, onFavorite, isFavorite }: Props) {
-  const promptText = `Create a concept inspired by "${item.title}" (${item.source}).`;
+export default function FeedCard({
+  item,
+  isFavorite,
+  onFavorite,
+  onSave,
+}: {
+  item: FeedItem;
+  isFavorite: boolean;
+  onFavorite: (id: string, next: boolean) => void;
+  onSave: (item: FeedItem) => void;
+}) {
+  const copy = useCallback(async () => {
+    const text =
+      item.prompt ||
+      `Create a concept inspired by "${item.title || 'this piece'}" from ${item.source}.`;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Fallback for older browsers
+      const area = document.createElement('textarea');
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+    }
+  }, [item]);
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-      <a href={item.url} target="_blank" rel="noreferrer" className="block relative aspect-[4/3] w-full">
-        <Image
+    <div className="group relative rounded-xl border border-neutral-200 bg-white shadow-sm transition hover:shadow-md">
+      {/* Image */}
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl bg-neutral-100">
+        {/* Using <img> avoids Next Image domain whitelisting issues */}
+        <img
           src={item.imageUrl}
-          alt={item.title}
-          fill
-          sizes="(max-width: 768px) 100vw, 33vw"
-          className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          alt={item.title || 'Inspiration'}
+          className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+          loading="lazy"
         />
-      </a>
-
-      {/* Hover controls */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/0 to-black/0 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-        <span className="rounded-full bg-white/95 px-2 py-1 text-xs font-medium text-neutral-700">
-          {item.source}
-        </span>
-        <button
-          className="pointer-events-auto inline-flex items-center justify-center rounded-full bg-white/95 p-2 shadow-sm hover:bg-white"
-          aria-label={isFavorite ? 'Unfavorite' : 'Favorite'}
-          onClick={() => onFavorite?.(item.id, !isFavorite)}
-        >
-          {isFavorite ? (
-            <HeartSolid className="h-4 w-4 text-red-500" />
-          ) : (
-            <HeartOutline className="h-4 w-4 text-neutral-800" />
-          )}
-        </button>
-      </div>
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-        <div className="rounded-full bg-white/95 px-2 py-1 text-xs font-medium text-neutral-900 max-w-[75%] truncate">
-          {item.title}
-        </div>
-        <div className="pointer-events-auto flex items-center gap-2">
+        {/* Hover controls */}
+        <div className="pointer-events-none absolute inset-0 flex items-start justify-end gap-2 p-3 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
           <button
-            className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-xs text-neutral-900 hover:bg-white"
-            onClick={() => copyToClipboard(promptText)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onFavorite(item.id, !isFavorite);
+            }}
+            className="rounded-md bg-white/90 px-2 py-1 text-sm font-medium text-neutral-900 shadow"
+            title={isFavorite ? 'Unfavorite' : 'Favorite'}
           >
-            <CopyIcon />
+            {isFavorite ? '♥' : '♡'}
+          </button>
+        </div>
+        <div className="pointer-events-none absolute inset-0 flex items-end justify-end gap-2 p-3 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              copy();
+            }}
+            className="rounded-md bg-white/90 px-3 py-1 text-sm font-medium text-neutral-900 shadow"
+            title="Copy prompt"
+          >
             Copy
           </button>
           <button
-            className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-xs text-neutral-900 hover:bg-white"
-            onClick={() => onSave?.(item)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSave(item);
+            }}
+            className="rounded-md bg-black/80 px-3 py-1 text-sm font-medium text-white shadow"
+            title="Save to Mine"
           >
-            <SaveIcon />
             Save
           </button>
         </div>
       </div>
-    </article>
+
+      {/* Meta */}
+      <div className="px-4 py-3">
+        <div className="line-clamp-1 text-base font-semibold text-neutral-900">
+          {item.title || 'Untitled'}
+        </div>
+        <div className="mt-0.5 text-sm text-neutral-500">
+          {item.author || item.source}
+        </div>
+      </div>
+    </div>
   );
 }

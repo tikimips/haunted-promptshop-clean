@@ -1,22 +1,110 @@
 // app/inspiration/page.tsx
-import InfiniteFeed from '@/components/InfiniteFeed';
+'use client';
 
-export const dynamic = 'force-dynamic';
+import { useEffect, useMemo, useState } from 'react';
+import InfiniteFeed from '@/components/InfiniteFeed';
+import PromptGrid from '@/components/PromptGrid';
+import GeneratePrompt from '@/components/GeneratePrompt';
+
+type Prompt = {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  imageUrl: string | null;
+  favorite?: boolean;
+  createdAt?: string;
+  prompt?: string;
+};
+
+const SAVE_KEY = 'myPrompts';
 
 export default function InspirationPage() {
+  const [tab, setTab] = useState<'all' | 'mine'>('all');
+  const [mine, setMine] = useState<Prompt[]>([]);
+  const [favFirst, setFavFirst] = useState(true);
+
+  // Load "Mine" from localStorage
+  useEffect(() => {
+    try {
+      const list = JSON.parse(localStorage.getItem(SAVE_KEY) || '[]') as Prompt[];
+      setMine(list || []);
+    } catch {
+      setMine([]);
+    }
+  }, [tab]);
+
+  const sortedMine = useMemo(() => {
+    if (!mine.length) return [];
+    let arr = [...mine];
+    // reverse chronological by createdAt
+    arr.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    if (favFirst) {
+      const fav = arr.filter((p) => p.favorite);
+      const rest = arr.filter((p) => !p.favorite);
+      fav.sort((a, b) => a.title.localeCompare(b.title));
+      arr = [...fav, ...rest];
+    }
+    return arr;
+  }, [mine, favFirst]);
+
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
-      <header className="mb-6 flex items-center justify-between">
+    <main className="mx-auto max-w-6xl px-4 py-8">
+      {/* Header: Title + Generate Prompt CTA */}
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Inspiration</h1>
-        {/* If you still have a global "Generate Prompt" action, keep it here */}
-      </header>
+        <GeneratePrompt />
+      </div>
 
-      {/* If you keep your DraftPrompt / Tabs / Mine, render them above the feed */}
-      {/* <DraftPromptBar /> */}
-      {/* <Tabs ... /> */}
+      {/* Tabs */}
+      <div className="mb-4 flex items-center gap-2">
+        <button
+          className={`rounded-full px-4 py-2 text-sm font-medium ${
+            tab === 'all'
+              ? 'bg-black text-white'
+              : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+          }`}
+          onClick={() => setTab('all')}
+        >
+          All
+        </button>
+        <button
+          className={`rounded-full px-4 py-2 text-sm font-medium ${
+            tab === 'mine'
+              ? 'bg-black text-white'
+              : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+          }`}
+          onClick={() => setTab('mine')}
+        >
+          Mine
+        </button>
 
-      {/* Always-on imagery feed */}
-      <InfiniteFeed />
+        {tab === 'mine' && (
+          <label className="ml-4 inline-flex items-center gap-2 text-sm text-neutral-600">
+            <input
+              type="checkbox"
+              checked={favFirst}
+              onChange={(e) => setFavFirst(e.target.checked)}
+            />
+            Favorites first (A→Z)
+          </label>
+        )}
+      </div>
+
+      {/* Content */}
+      {tab === 'all' ? (
+        <InfiniteFeed />
+      ) : (
+        <>
+          {sortedMine.length ? (
+            <PromptGrid prompts={sortedMine} />
+          ) : (
+            <p className="py-10 text-center text-neutral-500">
+              Nothing saved yet. Use <b>Save</b> on any card to add it here.
+            </p>
+          )}
+        </>
+      )}
     </main>
   );
 }
