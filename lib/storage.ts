@@ -16,9 +16,9 @@ export function readMine(): Prompt[] {
 }
 
 /**
- * Save prompts into localStorage
+ * Write prompts into localStorage
  */
-export function saveMine(items: Prompt[]) {
+export function writeMine(items: Prompt[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem("mine", JSON.stringify(items));

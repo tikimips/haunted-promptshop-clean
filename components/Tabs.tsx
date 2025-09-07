@@ -1,8 +1,10 @@
 // components/Tabs.tsx
-"use client";
-import { useCallback } from "react";
+import React from "react";
 
-export type Tab = { value: string; label: string };
+export type Tab = {
+  value: string;
+  label: string;
+};
 
 type Props = {
   tabs: Tab[];
@@ -10,33 +12,22 @@ type Props = {
   onChange: (value: string) => void;
 };
 
-export default function Tabs({ tabs, value, onChange }: Props) {
-  const click = useCallback(
-    (v: string) => () => onChange(v),
-    [onChange]
-  );
-
+export function Tabs({ tabs, value, onChange }: Props) {
   return (
-    <div className="flex gap-2 border-b border-neutral-200">
-      {tabs.map((t) => {
-        const active = t.value === value;
-        return (
-          <button
-            key={t.value}
-            onClick={click(t.value)}
-            className={[
-              "px-3 py-2 text-sm",
-              active
-                ? "border-b-2 border-black font-semibold"
-                : "text-neutral-500 hover:text-black"
-            ].join(" ")}
-            aria-pressed={active}
-            type="button"
-          >
-            {t.label}
-          </button>
-        );
-      })}
+    <div className="flex gap-4 border-b border-neutral-200 mb-6">
+      {tabs.map((t) => (
+        <button
+          key={t.value}
+          className={`pb-2 ${
+            value === t.value
+              ? "border-b-2 border-black font-semibold"
+              : "text-neutral-500"
+          }`}
+          onClick={() => onChange(t.value)}
+        >
+          {t.label}
+        </button>
+      ))}
     </div>
   );
 }
