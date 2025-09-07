@@ -1,5 +1,7 @@
 import PromptCard, { type Prompt } from "./PromptCard";
 
+export type { Prompt }; // ✅ Re-export the Prompt type
+
 type Props = {
   prompts: Prompt[];
   emptyMessage?: string;
