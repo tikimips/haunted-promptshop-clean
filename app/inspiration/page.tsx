@@ -5,6 +5,7 @@ import GeneratePrompt from "@/components/GeneratePrompt";
 import InfiniteFeed from "@/components/InfiniteFeed";
 import PromptGrid, { type Prompt } from "@/components/PromptGrid";
 import { readMine, writeMine } from "@/lib/storage";
+import { loadFeedPage } from "@/lib/feed";
 
 type TabKey = "all" | "mine";
 
@@ -24,15 +25,18 @@ export default function InspirationPage() {
   }, []);
 
   // Toggle favorite
-  const handleToggleFavorite = useCallback((p: Prompt) => {
-    const updated = mine.map((item) =>
-      item.createdAt === p.createdAt
-        ? { ...item, favorite: !item.favorite }
-        : item
-    );
-    setMine(updated);
-    localStorage.setItem("mine", JSON.stringify(updated));
-  }, [mine]);
+  const handleToggleFavorite = useCallback(
+    (p: Prompt) => {
+      const updated = mine.map((item) =>
+        item.createdAt === p.createdAt
+          ? { ...item, favorite: !item.favorite }
+          : item
+      );
+      setMine(updated);
+      localStorage.setItem("mine", JSON.stringify(updated));
+    },
+    [mine]
+  );
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
@@ -76,7 +80,11 @@ export default function InspirationPage() {
 
       {/* Content */}
       {tab === "all" ? (
-        <InfiniteFeed onSave={handleSave} onToggleFavorite={handleToggleFavorite} />
+        <InfiniteFeed
+          loadPage={loadFeedPage}
+          onSave={handleSave}
+          onToggleFavorite={handleToggleFavorite}
+        />
       ) : mine.length ? (
         <PromptGrid
           items={mine}
@@ -85,8 +93,8 @@ export default function InspirationPage() {
         />
       ) : (
         <p className="py-10 text-center text-neutral-500">
-          Nothing saved yet. Go to <b>Inspiration</b> and use <b>Generate Prompt</b>{" "}
-          to add one.
+          Nothing saved yet. Go to <b>Inspiration</b> and use{" "}
+          <b>Generate Prompt</b> to add one.
         </p>
       )}
     </main>
