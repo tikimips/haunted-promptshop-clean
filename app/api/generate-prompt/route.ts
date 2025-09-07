@@ -1,17 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server'
 
-export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { imageUrl, options } = body || {};
-  if (!imageUrl) return NextResponse.json({ error: 'imageUrl required' }, { status: 400 });
+export async function POST(req: Request) {
+  try {
+    const { prompt } = await req.json()
 
-  // Pass-through to Supabase Edge Function (replace URL)
-  const fnUrl = process.env.SUPABASE_FUNCTION_URL || '';
-  const r = await fetch(fnUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}` },
-    body: JSON.stringify({ imageUrl, options })
-  });
-  const data = await r.json();
-  return NextResponse.json(data);
+    if (!prompt) {
+      return NextResponse.json({ error: 'No prompt provided' }, { status: 400 })
+    }
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    })
+
+    const data = await response.json()
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error("Error in generate-prompt API:", error)
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+  }
 }
