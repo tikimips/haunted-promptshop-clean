@@ -2,91 +2,84 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useState } from "react";
-import type { Prompt } from "./PromptGrid";
+import { useCallback } from "react";
+import { Heart, Copy, BookmarkPlus } from "lucide-react";
+import type { Prompt } from "@/app/types";
 
 type Props = {
   prompt: Prompt;
+  onSave?: (p: Prompt) => void;
+  onToggleFavorite?: (id: string) => void;
+  onCopy?: (text: string) => void;
 };
 
-export default function PromptCard({ prompt }: Props) {
-  const [fav, setFav] = useState<boolean>(prompt.favorite);
+export default function PromptCard({
+  prompt,
+  onSave,
+  onToggleFavorite,
+  onCopy,
+}: Props) {
+  const { id, title, author, description, imageUrl, favorite } = prompt;
 
-  const onCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(prompt.prompt ?? "");
-    } catch {
-      // ignore
-    }
-  }, [prompt.prompt]);
+  const handleCopy = useCallback(() => {
+    if (onCopy && prompt.promptText) onCopy(prompt.promptText);
+    else if (prompt.description) onCopy?.(prompt.description);
+    else if (title) onCopy?.(title);
+  }, [onCopy, prompt, title]);
 
-  const onSave = useCallback(() => {
-    try {
-      const key = "promptshop:mine";
-      const raw = localStorage.getItem(key);
-      const list = raw ? (JSON.parse(raw) as Prompt[]) : [];
-      // avoid dup by id + title combo
-      const exists = list.find(
-        (p) => p.title === prompt.title && p.imageUrl === prompt.imageUrl
-      );
-      if (!exists) {
-        const next = [
-          {
-            ...prompt,
-            favorite: fav,
-            createdAt: new Date().toISOString(),
-          },
-          ...list,
-        ];
-        localStorage.setItem(key, JSON.stringify(next));
-      }
-    } catch {
-      // ignore
-    }
-  }, [fav, prompt]);
+  const handleSave = useCallback(() => {
+    onSave?.(prompt);
+  }, [onSave, prompt]);
+
+  const handleFavorite = useCallback(() => {
+    onToggleFavorite?.(id);
+  }, [onToggleFavorite, id]);
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-      <div className="relative aspect-[16/9] w-full">
+    <article className="card group">
+      <div className="relative aspect-[16/9] w-full overflow-hidden">
         <Image
-          src={prompt.imageUrl}
-          alt={prompt.title}
+          src={imageUrl || "/placeholder.png"} // always a string for Next/Image
+          alt={title}
           fill
-          sizes="(max-width: 768px) 100vw, 33vw"
-          className="object-cover"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          sizes="(min-width: 768px) 33vw, 100vw"
           priority={false}
         />
         {/* Hover controls */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 transition-opacity hover:opacity-100" />
-        <div className="absolute inset-x-3 bottom-3 flex gap-2">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+        <div className="absolute right-3 top-3 flex gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <button
-            className="rounded-md bg-white/90 px-3 py-1 text-sm font-medium shadow hover:bg-white"
-            onClick={onCopy}
+            onClick={handleCopy}
+            className="button button--soft pointer-events-auto"
+            title="Copy"
           >
-            Copy
+            <Copy className="h-4 w-4" />
           </button>
           <button
-            className="rounded-md bg-white/90 px-3 py-1 text-sm font-medium shadow hover:bg-white"
-            onClick={onSave}
+            onClick={handleSave}
+            className="button button--soft pointer-events-auto"
+            title="Save to Library"
           >
-            Save
+            <BookmarkPlus className="h-4 w-4" />
           </button>
           <button
-            className={`rounded-md px-3 py-1 text-sm font-medium shadow ${
-              fav ? "bg-rose-500 text-white" : "bg-white/90 hover:bg-white"
+            onClick={handleFavorite}
+            className={`button button--soft pointer-events-auto ${
+              favorite ? "bg-black text-white" : ""
             }`}
-            onClick={() => setFav((v) => !v)}
+            title={favorite ? "Unfavorite" : "Favorite"}
           >
-            {fav ? "♥ Favorite" : "♡ Favorite"}
+            <Heart className="h-4 w-4" />
           </button>
         </div>
       </div>
 
       <div className="p-4">
-        <h3 className="line-clamp-1 text-lg font-semibold">{prompt.title}</h3>
-        <p className="mt-1 text-sm text-neutral-500">{prompt.author}</p>
-        <p className="mt-2 line-clamp-2 text-sm text-neutral-600">
-          {prompt.description}
+        <h3 className="text-base font-semibold text-neutral-900">{title}</h3>
+        <p className="mt-1 text-xs text-neutral-500">{author}</p>
+        <p className="mt-2 line-clamp-2 text-sm text-neutral-700">
+          {description}
         </p>
       </div>
     </article>
