@@ -1,28 +1,18 @@
-import React from "react";
-
-type PromptCardProps = {
-  title?: string;
+type Prompt = {
+  id: string | number;
+  title: string;
   author?: string;
-  description?: string;
 };
 
-export default function PromptCard({
-  title = "Untitled Prompt",
-  author = "Anonymous",
-  description = "No description provided.",
-}: PromptCardProps) {
+export default function PromptCard({ prompt }: { prompt: Prompt }) {
   return (
-    <div className="rounded-xl border bg-white p-4 shadow-sm hover:shadow-md transition">
-      <h3 className="font-semibold text-gray-800">{title}</h3>
-      <p className="text-sm text-gray-500">by {author}</p>
-      <p className="mt-2 text-gray-600 text-sm">{description}</p>
+    <div className="rounded-xl border border-neutral-200 p-4">
+      <div className="h-36 w-full rounded-lg bg-neutral-100 mb-3" />
+      <div className="text-sm text-neutral-500">by {prompt.author ?? 'Unknown'}</div>
+      <div className="font-medium">{prompt.title}</div>
       <div className="mt-3 flex gap-2">
-        <button className="rounded-lg bg-indigo-500 px-3 py-1 text-white text-sm hover:bg-indigo-600">
-          Generate Prompt
-        </button>
-        <button className="rounded-lg border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
-          Open
-        </button>
+        <button className="text-sm rounded-lg border px-3 py-1">Generate Prompt</button>
+        <button className="text-sm rounded-lg border px-3 py-1">Open</button>
       </div>
     </div>
   );
