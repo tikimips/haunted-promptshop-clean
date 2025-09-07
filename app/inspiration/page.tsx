@@ -2,125 +2,179 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import GeneratePrompt from "../../components/GeneratePrompt";
-import PromptGrid from "../../components/PromptGrid";
-import Tabs from "../../components/Tabs";
-import { Prompt } from "../types";
+import PromptGrid, { Prompt } from "@/components/PromptGrid";
+import GeneratePrompt from "@/components/GeneratePrompt";
+import Tabs from "@/components/Tabs";
 
-// Local storage helpers (client-side only)
-const STORAGE_KEY = "ps:mine";
+// ---- A small seed feed so “All” always has imagery ----
+const SEED_FEED: Prompt[] = [
+  {
+    id: "seed-1",
+    title: "Isometric dashboard",
+    author: "Unsplash",
+    imageUrl:
+      "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?q=80&w=1600&auto=format&fit=crop",
+    description:
+      "Generate UI copy for a sleek isometric analytics dashboard with monochrome palette.",
+    favorite: false,
+    createdAt: new Date().toISOString(),
+    prompt:
+      "Sleek isometric analytics dashboard UI, glassmorphism, soft shadows, monochrome palette.",
+  },
+  {
+    id: "seed-2",
+    title: "Flat icon set",
+    author: "Unsplash",
+    imageUrl:
+      "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1600&auto=format&fit=crop",
+    description:
+      "Create 24 flat icons for a productivity app (outline + filled variants).",
+    favorite: false,
+    createdAt: new Date().toISOString(),
+    prompt:
+      "24 flat icons for a productivity app, outline + filled variants, consistent stroke weight.",
+  },
+  {
+    id: "seed-3",
+    title: "Moody food photography",
+    author: "Unsplash",
+    imageUrl:
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1600&auto=format&fit=crop",
+    description:
+      "Dark, moody food shot with soft light and shallow depth of field.",
+    favorite: false,
+    createdAt: new Date().toISOString(),
+    prompt:
+      "Moody food photography, soft directional light, shallow DOF, rich textures, dark backdrop.",
+  },
+  {
+    id: "seed-4",
+    title: "Tech macro",
+    author: "Unsplash",
+    imageUrl:
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1600&auto=format&fit=crop",
+    description:
+      "Abstract PCB macro with shallow depth and bokeh highlights for hero background.",
+    favorite: false,
+    createdAt: new Date().toISOString(),
+    prompt:
+      "Macro shot of PCB, abstract composition, shallow depth, bokeh highlights, cool tones.",
+  },
+  {
+    id: "seed-5",
+    title: "Minimal product render",
+    author: "Unsplash",
+    imageUrl:
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1600&auto=format&fit=crop",
+    description:
+      "Monochrome product-on-plinth hero with soft shadows and clean gradients.",
+    favorite: false,
+    createdAt: new Date().toISOString(),
+    prompt:
+      "Monochrome product render on plinth, soft shadows, clean gradients, editorial lighting.",
+  },
+  {
+    id: "seed-6",
+    title: "Futuristic UI",
+    author: "Unsplash",
+    imageUrl:
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1600&auto=format&fit=crop",
+    description:
+      "Futuristic heads-up display elements for sci-fi dashboard concept.",
+    favorite: false,
+    createdAt: new Date().toISOString(),
+    prompt:
+      "Futuristic HUD UI kit, thin lines, subtle glow, modular panels, sci-fi dashboard concept.",
+  },
+];
+
+// LocalStorage helpers
+const LS_KEY = "promptshop:mine";
+
 function readMine(): Prompt[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Partial<Prompt>[];
+    // normalize & coerce
+    return parsed.map((p, i) => ({
+      id: String(p.id ?? `mine-${i}`),
+      title: String(p.title ?? "Untitled"),
+      author: String(p.author ?? "You"),
+      imageUrl: String(p.imageUrl ?? ""),
+      description: String(p.description ?? ""),
+      favorite: Boolean(p.favorite),
+      createdAt: String(p.createdAt ?? new Date().toISOString()),
+      prompt: String(p.prompt ?? ""),
+    }));
   } catch {
     return [];
   }
 }
 
-// A small seed feed with real images (you can swap with your own source)
-const SEED_FEED: Prompt[] = [
-  {
-    id: crypto.randomUUID(),
-    name: "Isometric dashboard",
-    prompt: "Generate UI copy for a sleek isometric analytics dashboard.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1600&auto=format&fit=crop",
-    favorite: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: crypto.randomUUID(),
-    name: "Flat icon set",
-    prompt: "Create 24 flat icons for a productivity app (outline + filled).",
-    imageUrl:
-      "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1600&auto=format&fit=crop",
-    favorite: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: crypto.randomUUID(),
-    name: "Minimal landing hero",
-    prompt: "High-contrast, minimalist hero with bold headline and CTA.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?q=80&w=1600&auto=format&fit=crop",
-    favorite: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: crypto.randomUUID(),
-    name: "3D scene",
-    prompt:
-      "Low-poly 3D city block at dusk, neon accents, volumetric light.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1496307042754-b4aa456c4a2d?q=80&w=1600&auto=format&fit=crop",
-    favorite: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: crypto.randomUUID(),
-    name: "Editorial portrait",
-    prompt:
-      "Moody portrait lighting, cinematic tones, shallow depth of field.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1600&auto=format&fit=crop",
-    favorite: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: crypto.randomUUID(),
-    name: "Game HUD",
-    prompt:
-      "Futuristic game HUD: health, stamina, minimap, and quest log.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=1600&auto=format&fit=crop",
-    favorite: false,
-    createdAt: new Date().toISOString(),
-  },
-];
+function writeMine(items: Prompt[]) {
+  localStorage.setItem(LS_KEY, JSON.stringify(items));
+}
 
 export default function InspirationPage() {
   const [tab, setTab] = useState<"all" | "mine">("all");
-  const [mine, setMine] = useState<Prompt[]>([]);
 
+  // “Mine” (Prompt Library)
+  const [mine, setMine] = useState<Prompt[]>([]);
   useEffect(() => {
     setMine(readMine());
-    const onFocus = () => setMine(readMine());
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
   }, []);
 
-  // Favorites on top (alphabetical), then others reverse-chronological
+  // Allow GeneratePrompt to save new entries here
+  const handleSaved = (p: Prompt) => {
+    setMine((prev) => {
+      const next = [p, ...prev];
+      writeMine(next);
+      return next;
+    });
+    setTab("mine");
+  };
+
+  // Sorted “Mine”: favorites first (alpha by title), then newest
   const sortedMine = useMemo(() => {
-    const fav = mine
-      .filter((m) => m.favorite)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    const rest = mine
+    const favs = mine.filter((m) => m.favorite).sort((a, b) =>
+      a.title.localeCompare(b.title)
+    );
+    const nonFavs = mine
       .filter((m) => !m.favorite)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-    return [...fav, ...rest];
+    return [...favs, ...nonFavs];
   }, [mine]);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Inspiration</h1>
+    <main className="mx-auto max-w-6xl px-4 py-8">
+      {/* Generate From Image / Notes */}
+      <GeneratePrompt onSaved={handleSaved} />
+
+      <h1 className="mt-10 text-2xl font-bold">Inspiration</h1>
+
+      <div className="mt-4">
+        <Tabs
+          tabs={[
+            { id: "all", label: "All" },
+            { id: "mine", label: "Prompt Library" },
+          ]}
+          value={tab}
+          onChange={(id) => setTab(id as "all" | "mine")}
+        />
+
+        <div className="mt-6">
+          {tab === "all" ? (
+            <PromptGrid prompts={SEED_FEED} />
+          ) : sortedMine.length ? (
+            <PromptGrid prompts={sortedMine} />
+          ) : (
+            <p className="py-10 text-center text-neutral-500">
+              Nothing saved yet. Use <b>Save</b> on any card to add it here.
+            </p>
+          )}
+        </div>
       </div>
-
-      {/* Generate Prompt */}
-      <GeneratePrompt />
-
-      <Tabs active={tab} onChange={setTab} labels={["All", "Prompt Library"]} />
-
-      {tab === "all" ? (
-        <PromptGrid items={SEED_FEED} />
-      ) : sortedMine.length ? (
-        <PromptGrid items={sortedMine} />
-      ) : (
-        <p className="py-10 text-center text-neutral-500">
-          Nothing saved yet. Use <b>Save</b> on any card—or generate your first
-          prompt above.
-        </p>
-      )}
     </main>
   );
 }
