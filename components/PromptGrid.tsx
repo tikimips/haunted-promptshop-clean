@@ -1,56 +1,54 @@
 "use client";
-import Image from "next/image";
-import { useCallback } from "react";
-import { Heart, Copy, Bookmark } from "lucide-react";
-import clsx from "clsx";
-import type { Prompt } from "@/app/types";
+
+import { useMemo } from "react";
 import toast from "react-hot-toast";
+import { Heart, HeartOff, Copy } from "lucide-react";
+import type { Prompt } from "@/app/types";
 
 type Props = {
   items: Prompt[];
+  onCopy?: (text: string) => void;
   onSave?: (p: Prompt) => void;
   onToggleFavorite?: (p: Prompt) => void;
 };
 
-export default function PromptGrid({ items, onSave, onToggleFavorite }: Props) {
-  const onCopy = useCallback(async (p: Prompt) => {
-    const text = p.promptText || `${p.title} — ${p.description}`;
-    await navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
-  }, []);
+export default function PromptGrid({ items, onCopy, onSave, onToggleFavorite }: Props) {
+  const cols = useMemo(() => "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4", []);
+
+  function copy(text: string) {
+    navigator.clipboard.writeText(text);
+    onCopy?.(text);
+    toast.success("Prompt copied");
+  }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className={cols}>
       {items.map((p) => (
-        <div key={p.id} className="group relative overflow-hidden rounded-xl border bg-white">
-          <div className="relative aspect-[16/10] w-full">
-            <Image src={p.imageUrl} alt={p.title} fill className="object-cover" sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" />
-          </div>
-          <div className="p-3">
+        <article key={p.id} className="rounded-xl border overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={p.imageUrl} alt="" className="h-48 w-full object-cover" />
+          <div className="p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <div className="font-medium">{p.title}</div>
+              <h3 className="font-medium line-clamp-1">{p.title}</h3>
               <button
-                onClick={() => onToggleFavorite?.(p)}
-                className={clsx("rounded p-1 transition", p.favorite ? "text-red-600" : "text-neutral-500 hover:text-neutral-700")}
-                title="Favorite"
+                className="p-1 rounded hover:bg-neutral-100"
+                onClick={() => (onToggleFavorite ? onToggleFavorite(p) : undefined)}
+                title={p.favorite ? "Unfavorite" : "Favorite"}
               >
-                <Heart className={clsx("h-5 w-5", p.favorite && "fill-red-600")} />
+                {p.favorite ? <Heart className="size-4 fill-red-500 text-red-500" /> : <HeartOff className="size-4" />}
               </button>
             </div>
-            <div className="mt-1 line-clamp-2 text-sm text-neutral-600">{p.description}</div>
-          </div>
-
-          <div className="pointer-events-none absolute inset-0 hidden items-start justify-end gap-2 p-3 group-hover:flex">
-            <div className="pointer-events-auto flex gap-2">
-              <button onClick={() => onCopy(p)} className="rounded bg-white/90 px-2 py-1 text-xs shadow">Copy</button>
-              {onSave && (
-                <button onClick={() => onSave(p)} className="rounded bg-black px-2 py-1 text-xs text-white shadow flex items-center gap-1">
-                  <Bookmark className="h-3.5 w-3.5" /> Save
-                </button>
-              )}
+            <p className="text-sm text-neutral-600 line-clamp-2">{p.description}</p>
+            <div className="flex gap-2">
+              <button className="rounded border px-2 py-1 text-sm" onClick={() => copy(p.promptText)}>
+                <span className="inline-flex items-center gap-1"><Copy className="size-3" /> Copy</span>
+              </button>
+              <button className="rounded border px-2 py-1 text-sm" onClick={() => onSave?.(p)}>
+                Save
+              </button>
             </div>
           </div>
-        </div>
+        </article>
       ))}
     </div>
   );

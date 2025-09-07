@@ -1,27 +1,29 @@
 import { NextResponse } from "next/server";
 import type { Prompt } from "@/app/types";
 
+export const runtime = "edge";
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const page = Number(searchParams.get("page") ?? "1");
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const perPage = 15;
 
   const items: Prompt[] = Array.from({ length: perPage }).map((_, i) => {
     const idNum = (page - 1) * perPage + i + 1;
-    const id = `${idNum}`;
-    const width = 1200, height = 900;
-    const imageUrl = `https://picsum.photos/id/${(idNum % 1000) + 1}/${width}/${height}`;
     return {
-      id,
-      title: `Inspo #${id}`,
-      author: "Collected",
-      description: "Inspiration tile",
-      imageUrl,
-      promptText: "", // optional
+      id: `${idNum}`,
+      title: `Inspo #${idNum}`,
+      author: "Curator",
+      description: "Sample inspiration card with a nice visual.",
+      imageUrl: `https://picsum.photos/seed/${idNum}/1200/800`,
+      promptText:
+        "ultra-detailed cinematic photo, shallow depth of field, soft rim light, high contrast, 35mm, masterpiece",
       favorite: false,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(Date.now() - idNum * 60_000).toISOString(),
     };
   });
 
-  return NextResponse.json(items);
+  // Simulate end at page 6
+  if (page > 6) return NextResponse.json([], { status: 200 });
+  return NextResponse.json(items, { status: 200 });
 }

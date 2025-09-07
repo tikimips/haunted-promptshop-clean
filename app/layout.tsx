@@ -1,28 +1,21 @@
-// app/layout.tsx
-import type { Metadata } from "next";
 import "./globals.css";
-import Providers from "@/components/Providers";
+import Provider from "./auth/Provider";
 import Header from "@/components/Header";
 
-// mount react-hot-toast once for the whole app
-import { Toaster } from "react-hot-toast";
-
-export const metadata: Metadata = {
-  title: "Promptshop",
-  description: "Inspiration and prompt library",
+export const metadata = {
+  title: "Haunted Promptshop",
+  description: "Generate and save high-quality prompts from images.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-neutral-50 text-neutral-900 antialiased">
-        <Providers>
+    <html lang="en" className="h-full bg-white">
+      <body className="min-h-full text-neutral-900">
+        <Provider>
           <Header />
-          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
-        </Providers>
-
-        {/* Global toast portal */}
-        <Toaster position="top-right" />
+          {children}
+          <div id="toaster-root" />
+        </Provider>
       </body>
     </html>
   );

@@ -3,7 +3,6 @@ import OpenAI from "openai";
 
 export const runtime = "edge";
 
-/** Convert a Blob/File to a data: URL (Edge-safe) */
 async function blobToDataURL(b: Blob): Promise<string> {
   const bytes = new Uint8Array(await b.arrayBuffer());
   let binary = "";
@@ -15,7 +14,6 @@ async function blobToDataURL(b: Blob): Promise<string> {
 export async function POST(req: Request) {
   try {
     const form = await req.formData();
-
     const title = (form.get("title") as string) || "Untitled";
     const notes = (form.get("notes") as string) || "";
     const imageUrlFromForm = (form.get("imageUrl") as string) || "";
@@ -31,8 +29,12 @@ export async function POST(req: Request) {
 
     const openai = new OpenAI({ apiKey });
 
+<<<<<<< HEAD
+    let imagePart: any = null;
+=======
     // Build the image content (typed loosely to avoid SDK type drift)
     let imagePart: any = null;
+>>>>>>> ad6673cd580a1768d874c408e62b2581b1935a9a
     if (imageFile && typeof imageFile === "object") {
       const dataUrl = await blobToDataURL(imageFile);
       imagePart = { type: "image_url", image_url: { url: dataUrl } };
@@ -61,7 +63,11 @@ ${notes ? `User notes: ${notes}\n` : ""}Output ONLY the prompt text — no pream
         role: "user",
         content: [
           { type: "text", text: userText },
+<<<<<<< HEAD
+          imagePart,
+=======
           ...(imagePart ? [imagePart] : []),
+>>>>>>> ad6673cd580a1768d874c408e62b2581b1935a9a
         ],
       },
     ];

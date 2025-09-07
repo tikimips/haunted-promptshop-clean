@@ -4,7 +4,7 @@ export type Prompt = {
   author: string;
   description: string;
   imageUrl: string;
-  promptText?: string;
+  promptText: string;
   favorite: boolean;
   createdAt: string; // ISO
 };
