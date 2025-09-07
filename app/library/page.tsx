@@ -1,18 +1,15 @@
 // app/library/page.tsx
-import PromptGrid, { type Prompt } from "@/components/PromptGrid";
+import PromptGrid from "@/components/PromptGrid";
+import { Prompt } from "../types";
 
-export default async function LibraryPage() {
-  // TODO: replace with a real fetch of *your* prompts from Supabase
-  // For now, keep it empty to compile & render the page.
+export default function LibraryPage() {
+  // For now, empty. (We’ll wire Supabase later.)
   const myPrompts: Prompt[] = [];
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-2">Library</h1>
-      <p className="text-sm text-neutral-500 mb-6">
-        Only prompts owned by the signed-in user
-      </p>
-
+    <div className="mx-auto max-w-4xl px-4 py-8">
+      <h1 className="mb-6 text-2xl font-bold">Library</h1>
+      {/* Only prompts owned by the signed-in user */}
       <PromptGrid prompts={myPrompts} />
     </div>
   );
