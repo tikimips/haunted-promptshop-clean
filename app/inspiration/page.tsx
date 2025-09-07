@@ -3,76 +3,54 @@
 import { useEffect, useState, useCallback } from "react";
 import GeneratePrompt from "@/components/GeneratePrompt";
 import InfiniteFeed from "@/components/InfiniteFeed";
-import PromptGrid, { type Prompt } from "@/components/PromptGrid";
+import PromptGrid from "@/components/PromptGrid";
 import { readMine, writeMine } from "@/lib/storage";
 import { loadFeedPage } from "@/lib/feed";
-
-type TabKey = "all" | "mine";
+import type { Prompt } from "@/app/types";
 
 export default function InspirationPage() {
-  const [tab, setTab] = useState<TabKey>("all");
   const [mine, setMine] = useState<Prompt[]>([]);
+  const [tab, setTab] = useState<"all" | "mine">("all");
 
   // Load saved prompts
   useEffect(() => {
     setMine(readMine());
   }, []);
 
-  // Save a new prompt
+  // Save a prompt
   const handleSave = useCallback((p: Prompt) => {
     const updated = writeMine(p);
     setMine(updated);
   }, []);
 
   // Toggle favorite
-  const handleToggleFavorite = useCallback(
-    (p: Prompt) => {
-      const updated = mine.map((item) =>
-        item.createdAt === p.createdAt
-          ? { ...item, favorite: !item.favorite }
-          : item
-      );
-      setMine(updated);
-      localStorage.setItem("mine", JSON.stringify(updated));
-    },
-    [mine]
-  );
+  const handleToggleFavorite = useCallback((p: Prompt) => {
+    const updated = mine.map((item) =>
+      item.id === p.id ? { ...item, favorite: !item.favorite } : item
+    );
+    setMine(updated);
+    writeMine(updated);
+  }, [mine]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      {/* Page header */}
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">Inspiration</h1>
-        <p className="mt-2 text-neutral-600">
-          Upload an image and generate creative prompts. Save your favorites in
-          your Prompt Library.
-        </p>
-      </header>
+      {/* Header */}
+      <h1 className="mb-8 text-3xl font-bold">Inspiration</h1>
 
-      {/* Generate From Image */}
-      <div className="mb-10">
-        <GeneratePrompt onSaved={handleSave} />
-      </div>
+      {/* Generate From Image / Notes */}
+      <GeneratePrompt onSaved={handleSave} />
 
       {/* Tabs */}
-      <div className="mb-6 flex justify-center space-x-6 border-b">
+      <div className="mt-8 flex gap-4 border-b pb-2">
         <button
+          className={`pb-2 ${tab === "all" ? "border-b-2 border-black font-semibold" : "text-gray-500"}`}
           onClick={() => setTab("all")}
-          className={`pb-2 ${
-            tab === "all"
-              ? "border-b-2 border-black font-semibold"
-              : "text-neutral-500"
-          }`}
         >
           All
         </button>
         <button
+          className={`pb-2 ${tab === "mine" ? "border-b-2 border-black font-semibold" : "text-gray-500"}`}
           onClick={() => setTab("mine")}
-          className={`pb-2 ${
-            tab === "mine"
-              ? "border-b-2 border-black font-semibold"
-              : "text-neutral-500"
-          }`}
         >
           Prompt Library
         </button>
@@ -93,8 +71,7 @@ export default function InspirationPage() {
         />
       ) : (
         <p className="py-10 text-center text-neutral-500">
-          Nothing saved yet. Go to <b>Inspiration</b> and use{" "}
-          <b>Generate Prompt</b> to add one.
+          Nothing saved yet. Go to <b>Inspiration</b> and use <b>Save</b> on any card.
         </p>
       )}
     </main>
