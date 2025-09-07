@@ -1,34 +1,28 @@
+import React from "react";
+
 type PromptCardProps = {
-  title: string;
-  author: string;
-  image: string;
+  title?: string;
+  author?: string;
+  description?: string;
 };
 
-export default function PromptCard({ title, author, image }: PromptCardProps) {
+export default function PromptCard({
+  title = "Untitled Prompt",
+  author = "Anonymous",
+  description = "No description provided.",
+}: PromptCardProps) {
   return (
-    <div className="rounded-xl border bg-white shadow-sm overflow-hidden hover:shadow-md transition">
-      {/* Image */}
-      <div className="aspect-video bg-gray-100">
-        <img
-          src={image}
-          alt={title}
-          className="w-full h-full object-cover"
-        />
-      </div>
-
-      {/* Content */}
-      <div className="p-4 space-y-2">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <p className="text-sm text-gray-500">by {author}</p>
-
-        <div className="flex gap-2 mt-3">
-          <button className="px-3 py-1 text-sm rounded-lg border hover:bg-gray-50">
-            Generate Prompt
-          </button>
-          <button className="px-3 py-1 text-sm rounded-lg border hover:bg-gray-50">
-            Open
-          </button>
-        </div>
+    <div className="rounded-xl border bg-white p-4 shadow-sm hover:shadow-md transition">
+      <h3 className="font-semibold text-gray-800">{title}</h3>
+      <p className="text-sm text-gray-500">by {author}</p>
+      <p className="mt-2 text-gray-600 text-sm">{description}</p>
+      <div className="mt-3 flex gap-2">
+        <button className="rounded-lg bg-indigo-500 px-3 py-1 text-white text-sm hover:bg-indigo-600">
+          Generate Prompt
+        </button>
+        <button className="rounded-lg border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
+          Open
+        </button>
       </div>
     </div>
   );
