@@ -3,11 +3,8 @@
 import { useState } from 'react';
 
 type Tab = { name: string; content: React.ReactNode };
-type TabsProps = { tabs: Tab[] };
-
-export default function Tabs({ tabs }: TabsProps) {
+export default function Tabs({ tabs }: { tabs: Tab[] }) {
   const [active, setActive] = useState(0);
-
   return (
     <div>
       <div className="mb-4 flex gap-2">

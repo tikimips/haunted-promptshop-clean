@@ -1,29 +1,18 @@
-import { NextResponse } from 'next/server'
+// app/api/generate-prompt/route.ts
+import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { prompt } = await req.json()
+    // In a real implementation, parse the image and call OpenAI vision or embeddings
+    // const body = await req.json(); // e.g., { imageBase64: '...', filename: '...' }
 
-    if (!prompt) {
-      return NextResponse.json({ error: 'No prompt provided' }, { status: 400 })
-    }
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    })
-
-    const data = await response.json()
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error("Error in generate-prompt API:", error)
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    // Temporary stub response:
+    return NextResponse.json({
+      ok: true,
+      prompt:
+        'Create a high-contrast, minimalist landing hero with bold headline, subcopy, and a single CTA button. Use soft shadows and generous whitespace.',
+    });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: 'Failed to generate prompt' }, { status: 500 });
   }
 }
