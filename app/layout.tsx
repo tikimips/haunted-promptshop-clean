@@ -1,21 +1,22 @@
-import AuthButtons from '@/components/AuthButtons';
 import './globals.css';
-import type { ReactNode } from 'react';
+import AuthButtons from '@/components/AuthButtons';
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export const metadata = {
+  title: 'Promptshop',
+  description: 'Inspiration & prompt library'
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        {/* Top header */}
-        <header className="sticky top-0 z-40 bg-white/70 backdrop-blur border-b">
-          <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between">
-            <div className="font-semibold tracking-tight">Promptshop</div>
+      <body className="min-h-screen bg-white text-gray-900">
+        <header className="border-b">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+            <div className="text-lg font-semibold">Promptshop</div>
             <AuthButtons />
           </div>
         </header>
-
-        {/* Page content */}
-        <main className="mx-auto max-w-4xl p-4">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       </body>
     </html>
   );

@@ -1,9 +1,8 @@
-import type { Prompt } from "@/app/types";
-import PromptCard from "./PromptCard";
+import PromptCard, { type Prompt } from './PromptCard';
 
 export default function PromptGrid({ prompts }: { prompts: Prompt[] }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       {prompts.map((p) => (
         <PromptCard key={p.id} prompt={p} />
       ))}

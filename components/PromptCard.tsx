@@ -1,34 +1,33 @@
-import Image from "next/image";
-import type { Prompt } from "@/app/types";
+import Image from 'next/image';
 
-type PromptCardProps = { prompt: Prompt };
+export type Prompt = {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  imageUrl?: string;
+};
 
-export default function PromptCard({ prompt }: PromptCardProps) {
+export default function PromptCard({ prompt }: { prompt: Prompt }) {
   return (
-    <div className="rounded-xl border p-4 hover:shadow-md transition bg-white">
-      {prompt.imageUrl ? (
-        <div className="relative mb-3 aspect-[16/9] overflow-hidden rounded-lg bg-neutral-100">
+    <div className="overflow-hidden rounded-xl border shadow-sm">
+      {prompt.imageUrl && (
+        <div className="relative h-56 w-full">
           <Image
             src={prompt.imageUrl}
             alt={prompt.title}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover"
-            priority={false}
+            priority
           />
         </div>
-      ) : (
-        <div className="mb-3 aspect-[16/9] rounded-lg bg-neutral-100" />
       )}
-
-      <h3 className="text-lg font-semibold">{prompt.title}</h3>
-      <p className="text-sm text-neutral-600">{prompt.author ?? "Unknown"}</p>
-
-      {prompt.description && (
-        <p className="mt-2 text-sm text-neutral-700 line-clamp-3">
-          {prompt.description}
-        </p>
-      )}
+      <div className="p-4">
+        <h3 className="text-lg font-semibold">{prompt.title}</h3>
+        <p className="text-sm text-gray-600">{prompt.author}</p>
+        <p className="mt-2 text-sm text-gray-700">{prompt.description}</p>
+      </div>
     </div>
   );
 }

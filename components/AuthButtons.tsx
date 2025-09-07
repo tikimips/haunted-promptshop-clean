@@ -1,102 +1,68 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useState } from 'react';
+import { supabase } from '@/lib/supabase-browser';
 
 export default function AuthButtons() {
-  const [emailSent, setEmailSent] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUserEmail(data.session?.user?.email ?? null);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, session) => {
-      setUserEmail(session?.user?.email ?? null);
-      if (session?.user) {
-        // ensure profile row exists
-        const id = session.user.id;
-        await supabase.from('profiles').upsert({
-          id,
-          email: session.user.email ?? null
-        });
-      }
-    });
-    return () => {
-      sub.subscription.unsubscribe();
-    };
-  }, []);
-
-  async function signInEmail() {
-    const email = prompt('Enter your email to sign in');
+  const signInWithEmail = async () => {
+    const email = prompt('Enter your email to receive a sign-in link:');
     if (!email) return;
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/inspiration`
-      }
-    });
-    if (error) {
-      alert(error.message);
-    } else {
-      setEmailSent(email);
+
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          // After the magic link, Supabase will return you here
+          emailRedirectTo: `${window.location.origin}`
+        }
+      });
+      if (error) throw error;
+      alert('Check your email for the magic link.');
+    } catch (e: any) {
+      alert(e.message || 'Error sending magic link');
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  async function signInGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/inspiration`
-      }
-    });
-    if (error) {
-      alert(error.message);
+  const signInWithGoogle = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}`
+        }
+      });
+      if (error) throw error;
+      // user will be redirected by Supabase
+    } catch (e: any) {
+      alert(e.message || 'Google sign-in failed');
+    } finally {
+      setLoading(false);
     }
-  }
-
-  async function signOut() {
-    await supabase.auth.signOut();
-  }
-
-  if (userEmail) {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-neutral-600">Signed in as {userEmail}</span>
-        <button
-          onClick={signOut}
-          className="px-3 py-1.5 text-sm rounded-lg border"
-        >
-          Sign out
-        </button>
-      </div>
-    );
-  }
+  };
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+    <div className="flex gap-3">
       <button
-        onClick={signInEmail}
-        className="px-3 py-1.5 text-sm rounded-lg border w-full sm:w-auto"
+        onClick={signInWithEmail}
+        disabled={loading}
+        className="rounded-md border px-3 py-1 text-sm hover:bg-gray-50"
       >
-        Sign in with Email
+        {loading ? 'Working…' : 'Sign in with Email'}
       </button>
+
       <button
-        onClick={signInGoogle}
-        className="px-3 py-1.5 text-sm rounded-lg border w-full sm:w-auto"
+        onClick={signInWithGoogle}
+        disabled={loading}
+        className="rounded-md border px-3 py-1 text-sm hover:bg-gray-50"
       >
-        Continue with Google
+        {loading ? 'Working…' : 'Continue with Google'}
       </button>
-      {emailSent && (
-        <span className="text-xs text-neutral-600">
-          Check your email: {emailSent}
-        </span>
-      )}
     </div>
   );
 }
