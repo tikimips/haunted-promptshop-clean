@@ -10,22 +10,29 @@ type Props = {
   onFavoriteToggle?: (id: string, next: boolean) => void;
 };
 
+const FALLBACK_IMG =
+  'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1400&auto=format&fit=crop';
+
 export default function PromptCard({ prompt, onFavoriteToggle }: Props) {
   const {
     id,
     title,
     author = '',
     description = '',
-    imageUrl = 'https://images.unsplash.com/photo-1544025162-d76694265947?w=1200&q=80&auto=format&fit=crop',
+    imageUrl,
     favorite = false,
   } = prompt;
+
+  // Make src a definite string for next/image
+  const imgSrc: string = imageUrl ?? FALLBACK_IMG;
+  const altText = title || 'Prompt image';
 
   return (
     <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <div className="relative aspect-[16/9] w-full">
         <Image
-          src={imageUrl}
-          alt={title}
+          src={imgSrc}
+          alt={altText}
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 50vw"
