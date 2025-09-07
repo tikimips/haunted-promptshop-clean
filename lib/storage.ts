@@ -1,9 +1,6 @@
 // lib/storage.ts
 import type { Prompt } from "@/types";
 
-/**
- * Read prompts from localStorage
- */
 export function readMine(): Prompt[] {
   if (typeof window === "undefined") return [];
   try {
@@ -15,14 +12,17 @@ export function readMine(): Prompt[] {
   }
 }
 
-/**
- * Write prompts into localStorage
- */
-export function writeMine(items: Prompt[]) {
-  if (typeof window === "undefined") return;
+export function writeMine(items: Prompt[] | Prompt): Prompt[] {
+  if (typeof window === "undefined") return [];
   try {
-    localStorage.setItem("mine", JSON.stringify(items));
+    // normalize to array
+    const current = readMine();
+    const toAdd = Array.isArray(items) ? items : [items];
+    const updated = [...current, ...toAdd];
+    localStorage.setItem("mine", JSON.stringify(updated));
+    return updated;
   } catch (e) {
     console.error("Failed to save prompts", e);
+    return readMine();
   }
 }
