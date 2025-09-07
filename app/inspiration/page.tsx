@@ -1,69 +1,33 @@
 // app/inspiration/page.tsx
-import Tabs from '@/components/Tabs';
-import PromptGrid, { type Prompt } from '@/components/PromptGrid';
+import PromptGrid from '@/components/PromptGrid';
+import { Prompt } from '@/app/types';
 
 const SAMPLE_PROMPTS: Prompt[] = [
   {
-    id: '1',
+    id: 1,
     title: 'Isometric dashboard',
-    owner: 'Top Designer',
-    prompt:
+    author: 'Top Designer',
+    description:
       'Generate UI copy for a sleek isometric analytics dashboard with monochrome palette.',
     imageUrl:
-      'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1200&auto=format&fit=crop', // Unsplash domain is already allowed in next.config.js
   },
   {
-    id: '2',
+    id: 2,
     title: 'Flat icon set',
-    owner: 'Studio',
-    prompt:
-      'Create a minimal flat icon set for a developer tools website. Clean lines, high contrast.',
+    author: 'Studio',
+    description:
+      'Create a flat icon set for a productivity app (tasks, calendar, notes, reminders).',
     imageUrl:
-      'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=1200&auto=format&fit=crop',
-  },
-  {
-    id: '3',
-    title: 'Landing hero',
-    owner: 'Brand Lab',
-    prompt:
-      'Hero headline + subcopy for a startup landing page focused on speed and reliability.',
-    imageUrl: 'https://picsum.photos/seed/hero/1200/800',
+      'https://images.unsplash.com/photo-1517433456452-f9633a875f6f?q=80&w=1200&auto=format&fit=crop',
   },
 ];
 
 export default function InspirationPage() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Inspiration</h1>
-
-      <Tabs
-        tabs={[
-          {
-            name: 'All',
-            content: (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <PromptGrid prompts={SAMPLE_PROMPTS} />
-              </div>
-            ),
-          },
-          {
-            name: 'Design',
-            content: (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <PromptGrid prompts={SAMPLE_PROMPTS.slice(0, 2)} />
-              </div>
-            ),
-          },
-          {
-            name: 'Copy',
-            content: (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <PromptGrid prompts={SAMPLE_PROMPTS.slice(2)} />
-              </div>
-            ),
-          },
-        ]}
-      />
+    <div className="mx-auto max-w-4xl px-4">
+      <h1 className="mb-6 text-2xl font-bold">Inspiration</h1>
+      <PromptGrid prompts={SAMPLE_PROMPTS} />
     </div>
   );
 }
