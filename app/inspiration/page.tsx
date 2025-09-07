@@ -1,16 +1,22 @@
-import Tabs from '@/components/Tabs';
-// If you plan to render cards, uncomment the next line when ready:
-// import PromptCard from '@/components/PromptCard';
+import PromptCard from "@/components/PromptCard";
 
 export default function InspirationPage() {
   return (
-    <>
-      <Tabs />
-      <div className="p-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Replace with real feed cards later */}
-        <div className="rounded-xl border bg-white p-4 shadow-sm">Sample card</div>
-        <div className="rounded-xl border bg-white p-4 shadow-sm">Sample card</div>
+    <div className="mx-auto max-w-4xl px-6 py-10">
+      <h1 className="text-2xl font-bold mb-6">Inspiration</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <PromptCard
+          title="Isometric dashboard"
+          author="Top Designer"
+          description="A modern isometric-style dashboard template."
+        />
+        <PromptCard
+          title="Flat icon set"
+          author="Studio"
+          description="A clean flat-design icon set for product UIs."
+        />
       </div>
-    </>
+    </div>
   );
 }
