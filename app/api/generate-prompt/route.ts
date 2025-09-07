@@ -1,72 +1,76 @@
 // app/api/generate-prompt/route.ts
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import type { Prompt } from "@/app/types";
 
-export const runtime = "nodejs"; // we need the Node runtime (not edge) for file handling
-
-function toBase64(buf: ArrayBuffer) {
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return Buffer.from(binary, "binary").toString("base64");
-}
-
+// We accept multipart/form-data with fields: file (image), name (string)
 export async function POST(req: Request) {
+  const form = await req.formData();
+  const file = form.get("file") as File | null;
+  const name = String(form.get("name") || "Untitled");
+
+  if (!file) {
+    return NextResponse.json({ error: "No image provided." }, { status: 400 });
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "OPENAI_API_KEY is not set in your environment." },
+      { status: 400 }
+    );
+  }
+
+  // Minimal Vision call via OpenAI REST (no SDK) – prompt extraction
+  // You can replace the body with your preferred model parameters.
+  let promptText = "";
   try {
-    const form = await req.formData();
-    const file = form.get("file") as File | null;
-    const name = (form.get("name") as string | null) || "Untitled";
-
-    if (!file || file.size === 0) {
-      return NextResponse.json({ error: "No image file received." }, { status: 400 });
-    }
-
-    // Convert uploaded file to a data URL
-    const mime = file.type || "image/png";
-    const b64 = toBase64(await file.arrayBuffer());
-    const dataUrl = `data:${mime};base64,${b64}`;
-
-    // If there's no key (or on preview envs), return a graceful local prompt
-    const key = process.env.OPENAI_API_KEY;
-    if (!key) {
-      const prompt =
-        `(${name}) — A clear, single-sentence generative prompt describing the uploaded image’s subject, style, colors, lighting, and composition.`;
-      return NextResponse.json({ prompt, name }, { status: 200 });
-    }
-
-    const openai = new OpenAI({ apiKey: key });
-
-    // Use GPT-4o-mini with image input (chat.completions style for broad compat)
-    const completion = await openai.chat.completions.create({
+    const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+    const payload = {
       model: "gpt-4o-mini",
-      temperature: 0.7,
       messages: [
         {
           role: "user",
           content: [
-            {
-              type: "text",
-              text:
-                "You are a prompt-writer for an AI art app. " +
-                "Analyze this image and produce ONE concise, high-quality prompt that recreates it. " +
-                "Include subject, scene details, art style, materials, camera/lighting if relevant, " +
-                "and a short color palette. No preambles, no quotes."
-            },
-            { type: "image_url", image_url: { url: dataUrl } }
-          ]
-        }
-      ]
+            { type: "text", text: `Analyze this image and write a single best creative prompt the user can reuse to recreate it in a generative model. Keep it concise but specific.` },
+            { type: "image_url", image_url: { url: `data:${file.type};base64,${b64}` } },
+          ],
+        },
+      ],
+      max_tokens: 250,
+    };
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
-    const prompt =
-      completion.choices?.[0]?.message?.content?.trim() ||
-      "Elegant, cinematic prompt describing the image (fallback).";
-    return NextResponse.json({ prompt, name }, { status: 200 });
-  } catch (err: any) {
-    console.error("generate-prompt error:", err?.message || err);
-    return NextResponse.json(
-      { error: "Failed to generate prompt. Please try again." },
-      { status: 500 }
-    );
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data?.error?.message || "OpenAI API error";
+      return NextResponse.json({ error: msg }, { status: res.status });
+    }
+    promptText = data.choices?.[0]?.message?.content?.trim() || "";
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Failed to call OpenAI." }, { status: 500 });
   }
+
+  const id = crypto.randomUUID();
+  const imageUrl = URL.createObjectURL(file as any); // not persisted server side; client will save local fields
+
+  const saved: Prompt = {
+    id,
+    title: name,
+    author: "You",
+    description: "Generated from your image.",
+    imageUrl,
+    prompt: promptText,
+    favorite: false,
+    createdAt: new Date().toISOString(),
+  };
+
+  return NextResponse.json({ prompt: saved });
 }

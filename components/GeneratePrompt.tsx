@@ -1,180 +1,82 @@
 // components/GeneratePrompt.tsx
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import toast from "react-hot-toast";
-import type { Prompt } from "@/components/PromptGrid";
+import type { Prompt } from "@/app/types";
 
-type Props = {
-  /** Called after a prompt has been created and saved */
-  onSaved: (p: Prompt) => void;
-};
-
-const FALLBACK_IMG =
-  "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1600&auto=format&fit=crop";
+type Props = { onSaved?: (p: Prompt) => void };
 
 export default function GeneratePrompt({ onSaved }: Props) {
-  const [notes, setNotes] = useState("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const [name, setName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const previewUrl = useMemo(() => {
-    if (!file) return "";
-    try {
-      return URL.createObjectURL(file);
-    } catch {
-      return "";
-    }
-  }, [file]);
-
-  const onPick = () => inputRef.current?.click();
-
-  const onFile = (f: File | null) => {
-    if (!f) return;
-    if (!/^image\//.test(f.type)) {
-      toast.error("Please choose an image file.");
+  async function handleGenerate() {
+    if (!file) {
+      toast.error("Add an image first.");
       return;
     }
-    setFile(f);
-  };
-
-  const doGenerate = useCallback(async () => {
-    if (busy) return;
     setBusy(true);
-
-    const dismiss = toast.loading("Generating…");
-
     try {
-      // Try your API route if present; otherwise fall back to a local composition
-      let generatedPrompt = "";
+      const body = new FormData();
+      body.append("file", file);
+      body.append("name", name || "Untitled");
 
-      try {
-        const body = new FormData();
-        if (notes) body.append("notes", notes);
-        if (file) body.append("image", file);
+      const res = await fetch("/api/generate-prompt", { method: "POST", body });
+      const data = await res.json();
 
-        const res = await fetch("/api/generate-prompt", {
-          method: "POST",
-          body,
-        });
+      if (!res.ok) throw new Error(data?.error || "Failed to generate.");
 
-        if (res.ok) {
-          const data = (await res.json()) as { prompt?: string };
-          generatedPrompt = (data?.prompt || "").trim();
-        }
-      } catch {
-        // ignore network/route errors; we'll fall back
-      }
-
-      if (!generatedPrompt) {
-        // Fallback composition so the UI still works even if API is not present
-        generatedPrompt =
-          notes?.trim() ||
-          "Describe the scene and visual style. Use specific nouns, verbs, materials, and lighting. Keep it concise.";
-      }
-
-      const now = new Date().toISOString();
-      const promptObj: Prompt = {
-        id: `gen-${now}`,
-        title: name?.trim() || "Untitled prompt",
-        author: "You",
-        imageUrl: previewUrl || FALLBACK_IMG,
-        description: notes?.trim() || "Generated prompt",
-        favorite: false,
-        createdAt: now,
-        prompt: generatedPrompt,
-      };
-
-      // Persist in localStorage (Prompt Library)
-      try {
-        const key = "promptshop:mine";
-        const raw = localStorage.getItem(key);
-        const list = raw ? (JSON.parse(raw) as Prompt[]) : [];
-        localStorage.setItem(key, JSON.stringify([promptObj, ...list]));
-      } catch {
-        // ignore storage errors
-      }
-
-      onSaved(promptObj);
-
-      toast.success("Saved to Prompt Library", { id: dismiss });
-      setNotes("");
+      const saved: Prompt = data.prompt;
+      toast.success(`Saved “${saved.title}” to your library`);
       setName("");
       setFile(null);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to generate prompt.", { id: dismiss });
+      if (fileRef.current) fileRef.current.value = "";
+      onSaved?.(saved);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate prompt.");
     } finally {
       setBusy(false);
     }
-  }, [busy, file, name, notes, onSaved, previewUrl]);
+  }
 
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-4 sm:p-6 shadow-sm">
-      <h2 className="font-medium">+ Generate Prompt</h2>
-      <p className="mt-1 text-sm text-neutral-600">
-        Add notes (or paste text). Optionally include an image. Give it a name,
-        then click <b>Generate Prompt</b>. We’ll analyze it (or compose from
-        notes) and save it to your Prompt Library.
+    <section className="mb-8 rounded-xl border bg-white p-4">
+      <h3 className="mb-2 font-medium">+ Generate Prompt</h3>
+      <p className="mb-3 text-sm text-neutral-600">
+        Drag &amp; drop an image or choose a file, give it a name, then click <b>Generate Prompt</b>.
+        We’ll analyze the image with OpenAI and save it to your Prompt Library.
       </p>
 
-      {/* uploader + name */}
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[1fr,16rem]">
-        <div>
-          <div
-            className="flex min-h-[160px] cursor-pointer items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-3 text-neutral-500"
-            onClick={onPick}
-            role="button"
-            aria-label="Pick an image"
-          >
-            {previewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="max-h-40 w-full rounded-md object-contain"
-              />
-            ) : (
-              <span>Drag & drop or click to add an image</span>
-            )}
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 md:flex-row">
+        <div className="flex items-center gap-2">
           <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name your prompt"
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="block w-64 cursor-pointer text-sm file:mr-3 file:rounded-md file:border file:bg-white file:px-3 file:py-2"
           />
-          <button
-            disabled={busy}
-            onClick={doGenerate}
-            className="rounded-md bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {busy ? "Generating…" : "Generate Prompt"}
-          </button>
         </div>
-      </div>
 
-      {/* notes */}
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="e.g. sleek dashboard UI, glassmorphism, soft shadows, minimalist color, editorial layout…"
-        className="mt-4 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-        rows={4}
-      />
+        <input
+          type="text"
+          placeholder="Name this prompt (e.g., 'Isometric dashboard')"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full rounded-md border px-3 py-2 text-sm"
+        />
+
+        <button
+          disabled={busy}
+          onClick={handleGenerate}
+          className="rounded-md bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {busy ? "Generating…" : "Generate Prompt"}
+        </button>
+      </div>
     </section>
   );
 }
