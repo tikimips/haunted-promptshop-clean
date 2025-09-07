@@ -5,30 +5,41 @@ import { useEffect, useMemo, useState } from 'react';
 import InfiniteFeed from '@/components/InfiniteFeed';
 import PromptGrid from '@/components/PromptGrid';
 import GeneratePrompt from '@/components/GeneratePrompt';
-
-type Prompt = {
-  id: string;
-  title: string;
-  author: string;
-  description: string;
-  imageUrl: string | null;
-  favorite?: boolean;
-  createdAt?: string;
-  prompt?: string;
-};
+import type { Prompt } from '@/app/types';
 
 const SAVE_KEY = 'myPrompts';
+
+function normalizeMine(raw: unknown): Prompt[] {
+  const list = Array.isArray(raw) ? raw : [];
+  return list.map((p: any) => {
+    const createdAt: string =
+      typeof p?.createdAt === 'string' && p.createdAt
+        ? p.createdAt
+        : new Date().toISOString();
+
+    return {
+      id: String(p?.id ?? crypto.randomUUID()),
+      title: String(p?.title ?? 'Untitled prompt'),
+      author: String(p?.author ?? 'Unknown'),
+      description: String(p?.description ?? ''),
+      imageUrl: p?.imageUrl ?? null,
+      favorite: Boolean(p?.favorite),
+      createdAt, // ✅ always a string (required by Prompt)
+      prompt: typeof p?.prompt === 'string' ? p.prompt : '',
+    } satisfies Prompt;
+  });
+}
 
 export default function InspirationPage() {
   const [tab, setTab] = useState<'all' | 'mine'>('all');
   const [mine, setMine] = useState<Prompt[]>([]);
   const [favFirst, setFavFirst] = useState(true);
 
-  // Load "Mine" from localStorage
+  // Load and normalize "Mine" from localStorage
   useEffect(() => {
     try {
-      const list = JSON.parse(localStorage.getItem(SAVE_KEY) || '[]') as Prompt[];
-      setMine(list || []);
+      const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || '[]');
+      setMine(normalizeMine(raw));
     } catch {
       setMine([]);
     }
@@ -37,8 +48,11 @@ export default function InspirationPage() {
   const sortedMine = useMemo(() => {
     if (!mine.length) return [];
     let arr = [...mine];
-    // reverse chronological by createdAt
-    arr.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+    // Reverse chronological by createdAt
+    arr.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    // Optionally bubble favorites to the top A→Z
     if (favFirst) {
       const fav = arr.filter((p) => p.favorite);
       const rest = arr.filter((p) => !p.favorite);
