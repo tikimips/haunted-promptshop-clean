@@ -1,10 +1,10 @@
 // app/types.ts
-
 export type Prompt = {
-  // Keep id flexible while you wire things up (Supabase UUIDs are strings).
-  id: string | number;
-  title: string;
-  author?: string | null;
-  description?: string | null;
-  imageUrl?: string | null;
+  id: string;               // unique id (uuid-ish)
+  title: string;            // user-supplied name
+  author?: string | null;   // optional
+  description?: string;     // the actual prompt text (what we copy)
+  imageUrl?: string | null; // thumbnail
+  createdAt: string;        // ISO date
+  favorite?: boolean;       // ❤️
 };
