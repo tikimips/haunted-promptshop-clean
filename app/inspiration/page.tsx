@@ -1,29 +1,16 @@
-import GeneratePrompt from '@/components/GeneratePrompt';
-import PromptCard from '@/components/PromptCard';
 import Tabs from '@/components/Tabs';
+// If you plan to render cards, uncomment the next line when ready:
+// import PromptCard from '@/components/PromptCard';
 
 export default function InspirationPage() {
   return (
-    <div className="space-y-6">
-      {/* Generate Prompt box */}
-      <GeneratePrompt />
-
-      {/* Tabs navigation */}
+    <>
       <Tabs />
-
-      {/* Example Inspiration grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <PromptCard
-          title="Isometric dashboard"
-          author="Top Designer"
-          image="https://picsum.photos/600/400?random=1"
-        />
-        <PromptCard
-          title="Flat icon set"
-          author="Studio"
-          image="https://picsum.photos/600/400?random=2"
-        />
+      <div className="p-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Replace with real feed cards later */}
+        <div className="rounded-xl border bg-white p-4 shadow-sm">Sample card</div>
+        <div className="rounded-xl border bg-white p-4 shadow-sm">Sample card</div>
       </div>
-    </div>
+    </>
   );
 }
