@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import OpenAI, { type ChatCompletionContentPartImage } from "openai";
+import OpenAI from "openai";
 
 export const runtime = "edge";
 
@@ -31,8 +31,8 @@ export async function POST(req: Request) {
 
     const openai = new OpenAI({ apiKey });
 
-    // Build the image content for the v4 SDK
-    let imagePart: ChatCompletionContentPartImage | null = null;
+    // Build the image content (typed loosely to avoid SDK type drift)
+    let imagePart: any = null;
     if (imageFile && typeof imageFile === "object") {
       const dataUrl = await blobToDataURL(imageFile);
       imagePart = { type: "image_url", image_url: { url: dataUrl } };
@@ -51,7 +51,6 @@ export async function POST(req: Request) {
 Title: ${title}
 ${notes ? `User notes: ${notes}\n` : ""}Output ONLY the prompt text — no preamble, no bullet points, no quotes.`;
 
-    // Keep types simple to avoid version drift on SDK typings
     const messages: any[] = [
       {
         role: "system",
@@ -62,7 +61,6 @@ ${notes ? `User notes: ${notes}\n` : ""}Output ONLY the prompt text — no pream
         role: "user",
         content: [
           { type: "text", text: userText },
-          // conditionally add the image (cannot include nulls in the array)
           ...(imagePart ? [imagePart] : []),
         ],
       },
