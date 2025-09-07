@@ -1,11 +1,11 @@
-// Central Prompt type used everywhere.
+// app/types.ts
 export type Prompt = {
   id: string;
   title: string;
   author: string;
   description: string;
-  imageUrl: string;       // can be https://… or data:…
-  promptText: string;     // the actual prompt
+  imageUrl: string;
+  promptText: string; // <- required everywhere
   favorite: boolean;
-  createdAt: string;      // ISO string
+  createdAt: string;  // ISO string
 };

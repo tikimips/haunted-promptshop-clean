@@ -1,24 +1,18 @@
+// app/layout.tsx
 import "./globals.css";
-import Link from "next/link";
+import type { Metadata } from "next";
+import Header from "@/components/Header";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Haunted Promptshop",
-  description: "Inspiration + Prompt Library",
+  description: "Visual inspiration and prompt library",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-white text-black antialiased">
-        <header className="border-b">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-            <Link href="/" className="font-semibold">Haunted</Link>
-            <nav className="flex items-center gap-4 text-sm text-neutral-600">
-              <Link href="/inspiration" className="hover:text-black">Inspiration</Link>
-              <Link href="/library" className="hover:text-black">Prompt Library</Link>
-            </nav>
-          </div>
-        </header>
+      <body className="min-h-dvh bg-white text-neutral-900 antialiased">
+        <Header />
         {children}
       </body>
     </html>

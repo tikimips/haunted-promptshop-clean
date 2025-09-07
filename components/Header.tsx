@@ -1,15 +1,25 @@
 // components/Header.tsx
 "use client";
+
 import Link from "next/link";
 
 export default function Header() {
   return (
-    <header className="border-b border-neutral-200">
+    <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="/" className="text-base font-semibold">Promptshop</Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/inspiration" className="hover:underline">Inspiration</Link>
-          <Link href="/library" className="hover:underline">Prompt Library</Link>
+        <Link href="/" className="text-lg font-bold">Haunted Promptshop</Link>
+
+        <nav className="flex items-center gap-4">
+          <Link href="/inspiration" className="text-sm hover:underline">Inspiration</Link>
+          <Link href="/library" className="text-sm hover:underline">Prompt Library</Link>
+          {/* Auth placeholders */}
+          <button
+            type="button"
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
+            onClick={() => alert("Google OAuth not yet configured. See README in auth section.")}
+          >
+            Continue with Google
+          </button>
         </nav>
       </div>
     </header>
