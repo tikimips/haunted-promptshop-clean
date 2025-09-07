@@ -2,7 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Minimal defaults */
+/* App globals */
+:root {
+  --bg: #ffffff;
+  --fg: #0a0a0a;
+}
+
 html, body {
   height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.container {
+  @apply mx-auto max-w-7xl;
+}
+
+/* Card hover helpers */
+.card {
+  @apply rounded-xl border border-neutral-200 bg-white shadow-sm transition;
+}
+.card:hover {
+  @apply shadow-md;
+}
+
+/* Tabs */
+.tab-btn {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-sm;
+}
+.tab-btn-active {
+  @apply bg-black text-white;
 }
