@@ -1,9 +1,6 @@
-// components/PromptCard.tsx
-"use client";
-
 import Image from "next/image";
-import { Copy, BookmarkPlus, Heart } from "lucide-react";
-import type { Prompt } from "./PromptGrid";
+import { useCallback, useState } from "react";
+import type { Prompt } from "@/app/types";
 
 type Props = {
   prompt: Prompt;
@@ -18,51 +15,61 @@ export default function PromptCard({
   onSave,
   onToggleFavorite,
 }: Props) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    if (prompt.promptText) {
+      navigator.clipboard.writeText(prompt.promptText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      onCopy?.(prompt);
+    }
+  }, [prompt, onCopy]);
+
   return (
-    <article className="group overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-      <div className="relative aspect-[16/10] w-full">
+    <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+      {prompt.imageUrl && (
         <Image
-          src={prompt.imageUrl || "/placeholder.png"}
-          alt={prompt.title}
-          fill
-          className="object-cover"
-          sizes="(max-width: 1024px) 50vw, 33vw"
+          src={prompt.imageUrl}
+          alt={prompt.title || "Generated prompt"}
+          width={400}
+          height={300}
+          className="w-full object-cover"
         />
-        <div className="pointer-events-none absolute inset-0 flex items-start justify-end gap-2 p-2 opacity-0 transition-opacity group-hover:opacity-100">
+      )}
+      <div className="p-4">
+        <h3 className="font-semibold">{prompt.title || "Untitled Prompt"}</h3>
+        <p className="mt-2 text-sm text-neutral-600">
+          {prompt.description || "No description provided."}
+        </p>
+        {prompt.promptText && (
+          <pre className="mt-3 rounded bg-neutral-100 p-2 text-xs whitespace-pre-wrap">
+            {prompt.promptText}
+          </pre>
+        )}
+        <div className="mt-3 flex space-x-2">
           <button
-            className="pointer-events-auto rounded-md bg-white/90 p-2 shadow"
-            onClick={() => onCopy?.(prompt)}
-            aria-label="Copy prompt"
-            title="Copy prompt"
+            onClick={handleCopy}
+            className="rounded bg-neutral-200 px-2 py-1 text-xs"
           >
-            <Copy className="h-4 w-4" />
+            {copied ? "Copied!" : "Copy"}
           </button>
           <button
-            className="pointer-events-auto rounded-md bg-white/90 p-2 shadow"
             onClick={() => onSave?.(prompt)}
-            aria-label="Save"
-            title="Save"
+            className="rounded bg-blue-500 px-2 py-1 text-xs text-white"
           >
-            <BookmarkPlus className="h-4 w-4" />
+            Save
           </button>
           <button
-            className={`pointer-events-auto rounded-md bg-white/90 p-2 shadow ${
-              prompt.favorite ? "text-rose-600" : ""
-            }`}
             onClick={() => onToggleFavorite?.(prompt)}
-            aria-label="Favorite"
-            title="Favorite"
+            className={`rounded px-2 py-1 text-xs ${
+              prompt.favorite ? "bg-yellow-400" : "bg-neutral-200"
+            }`}
           >
-            <Heart className="h-4 w-4" fill={prompt.favorite ? "currentColor" : "none"} />
+            {prompt.favorite ? "★" : "☆"}
           </button>
         </div>
       </div>
-
-      <div className="space-y-1 p-4">
-        <h3 className="line-clamp-1 font-medium">{prompt.title}</h3>
-        <p className="text-xs text-neutral-500">{prompt.author}</p>
-        <p className="line-clamp-2 text-sm text-neutral-600">{prompt.description}</p>
-      </div>
-    </article>
+    </div>
   );
 }
