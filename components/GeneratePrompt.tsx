@@ -1,82 +1,130 @@
 // components/GeneratePrompt.tsx
 "use client";
-
 import { useRef, useState } from "react";
-import toast from "react-hot-toast";
-import type { Prompt } from "@/app/types";
+import { ImageIcon, Camera, Loader2 } from "lucide-react";
 
-type Props = { onSaved?: (p: Prompt) => void };
-
-export default function GeneratePrompt({ onSaved }: Props) {
-  const fileRef = useRef<HTMLInputElement | null>(null);
-  const [name, setName] = useState("");
+export default function GeneratePrompt() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [title, setTitle] = useState("");
 
-  async function handleGenerate() {
-    if (!file) {
-      toast.error("Add an image first.");
-      return;
-    }
+  const onPick = () => fileInputRef.current?.click();
+
+  const onFile = (f: File) => {
+    setFile(f);
+    if (!title) setTitle(f.name.replace(/\.[^.]+$/, ""));
+  };
+
+  const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]);
+  };
+
+  const onChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const f = e.target.files?.[0];
+    if (f) onFile(f);
+  };
+
+  const generate = async () => {
+    if (!file) return;
     setBusy(true);
     try {
-      const body = new FormData();
-      body.append("file", file);
-      body.append("name", name || "Untitled");
+      const buf = await file.arrayBuffer();
+      const base64 = Buffer.from(buf).toString("base64");
+      const dataUrl = `data:${file.type};base64,${base64}`;
 
-      const res = await fetch("/api/generate-prompt", { method: "POST", body });
-      const data = await res.json();
+      const res = await fetch("/api/generate-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageDataUrl: dataUrl, title: title || "Untitled" }),
+      });
 
-      if (!res.ok) throw new Error(data?.error || "Failed to generate.");
-
-      const saved: Prompt = data.prompt;
-      toast.success(`Saved “${saved.title}” to your library`);
-      setName("");
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || "Failed");
+      }
+      // Optionally show a toast here; keeping minimal
       setFile(null);
-      if (fileRef.current) fileRef.current.value = "";
-      onSaved?.(saved);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to generate prompt.");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to generate prompt. Check server logs / API key.");
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   return (
-    <section className="mb-8 rounded-xl border bg-white p-4">
-      <h3 className="mb-2 font-medium">+ Generate Prompt</h3>
-      <p className="mb-3 text-sm text-neutral-600">
-        Drag &amp; drop an image or choose a file, give it a name, then click <b>Generate Prompt</b>.
-        We’ll analyze the image with OpenAI and save it to your Prompt Library.
-      </p>
-
-      <div className="flex flex-col gap-3 md:flex-row">
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="block w-64 cursor-pointer text-sm file:mr-3 file:rounded-md file:border file:bg-white file:px-3 file:py-2"
-          />
-        </div>
-
-        <input
-          type="text"
-          placeholder="Name this prompt (e.g., 'Isometric dashboard')"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-md border px-3 py-2 text-sm"
-        />
-
-        <button
-          disabled={busy}
-          onClick={handleGenerate}
-          className="rounded-md bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          {busy ? "Generating…" : "Generate Prompt"}
-        </button>
+    <section className="rounded-xl border border-neutral-200 p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">+ Generate Prompt</h2>
       </div>
+
+      <div
+        className="mt-4 rounded-lg border-2 border-dashed border-neutral-300 p-6 text-center hover:border-neutral-400"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={onDrop}
+      >
+        {!file ? (
+          <div className="space-y-3">
+            <div className="flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={onPick}
+                className="rounded-md border px-3 py-2 text-sm hover:bg-neutral-50"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Upload image
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled
+                title="Camera (coming soon)"
+                className="rounded-md border px-3 py-2 text-sm text-neutral-400"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Camera className="h-4 w-4" />
+                  Use camera
+                </span>
+              </button>
+            </div>
+            <p className="text-xs text-neutral-500">
+              Drag & drop JPG/PNG/GIF/SVG/TIFF or click “Upload image”
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="text-sm">Selected: <b>{file.name}</b></div>
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row">
+              <input
+                type="text"
+                placeholder="Name this prompt"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full rounded-md border px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                onClick={generate}
+                disabled={busy}
+                className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90 disabled:opacity-60"
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate Prompt"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={onChange}
+      />
     </section>
   );
 }

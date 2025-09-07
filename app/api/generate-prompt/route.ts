@@ -1,71 +1,75 @@
 // app/api/generate-prompt/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import type { Prompt } from "@/app/types";
+import { NextResponse } from "next/server";
 
-// Use Node runtime (we build a base64 string, etc.)
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_PUBLIC;
+
 export const runtime = "nodejs";
-// Avoid caching this route
-export const dynamic = "force-dynamic";
 
-/**
- * Accepts multipart/form-data with:
- * - image: File (optional)
- * - name: string (required – user’s title for the prompt card)
- * - notes: string (optional – free text user notes)
- *
- * Returns a Prompt object with `promptText` filled in.
- * (If OPENAI_API_KEY is set, you can wire your OpenAI call here later.)
- */
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const contentType = req.headers.get("content-type") || "";
-    if (!contentType.includes("multipart/form-data")) {
+    if (!OPENAI_API_KEY) {
       return NextResponse.json(
-        { error: "Expected multipart/form-data" },
-        { status: 400 }
+        { error: "Missing OPENAI_API_KEY" },
+        { status: 500 }
       );
     }
 
-    const form = await req.formData();
-    const name = (form.get("name") || "Untitled").toString().trim();
-    const notes = (form.get("notes") || "").toString();
-    const file = form.get("image") as File | null;
+    const { imageDataUrl, title } = await req.json();
 
-    // Default image (if user didn’t upload)
-    let imageUrl = "/placeholder.png";
-
-    // If an image was provided, convert to a data URL so Next/Image can render it
-    if (file && file.size > 0) {
-      const arrayBuffer = await file.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
-      imageUrl = `data:${file.type};base64,${base64}`;
+    if (!imageDataUrl || typeof imageDataUrl !== "string") {
+      return NextResponse.json({ error: "imageDataUrl (data URL) required" }, { status: 400 });
     }
 
-    // ---- PLACEHOLDER “generation”. ----
-    // You can replace this with a real OpenAI vision call later.
-    // Keep the key name as `promptText` to match our shared type.
-    const promptText =
-      notes?.length > 0
-        ? `Generate design copy inspired by the provided image. Notes: ${notes}`
-        : `Generate design copy inspired by the provided image titled "${name}".`;
-
-    const saved: Prompt = {
-      id: crypto.randomUUID(),
-      title: name,
-      author: "You",
-      description: "Generated from your image.",
-      imageUrl,
-      favorite: false,
-      createdAt: new Date().toISOString(),
-      promptText, // ✅ matches app/types.ts
+    // Ask OpenAI to write a clean, copy-ready prompt that matches the style of the image.
+    const payload = {
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You write concise, high-quality image-generation prompts in one paragraph. Avoid disclaimers. Include medium, lighting, composition, and style cues.",
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: `Create a copy-ready image-generation prompt inspired by this reference image. Title: ${title || "Untitled"}` },
+            { type: "image_url", image_url: { url: imageDataUrl } },
+          ],
+        },
+      ],
+      temperature: 0.7,
     };
 
-    return NextResponse.json(saved, { status: 200 });
-  } catch (err) {
-    console.error("generate-prompt error:", err);
-    return NextResponse.json(
-      { error: "Failed to generate prompt." },
-      { status: 500 }
-    );
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!r.ok) {
+      const text = await r.text();
+      return NextResponse.json({ error: text }, { status: 500 });
+    }
+
+    const data = await r.json();
+    const promptText: string =
+      data?.choices?.[0]?.message?.content?.trim?.() || "A high-fidelity prompt based on your image.";
+
+    // Return a normalized Prompt object (client will handle saving later)
+    return NextResponse.json({
+      id: crypto.randomUUID(),
+      title: title || "Untitled",
+      author: "You",
+      description: "Generated from your image.",
+      imageUrl: imageDataUrl,
+      promptText,
+      favorite: false,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 });
   }
 }
