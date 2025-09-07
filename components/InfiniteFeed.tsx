@@ -1,74 +1,87 @@
 // components/InfiniteFeed.tsx
 'use client';
 
-import useSWRInfinite from 'swr/infinite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FeedCard from './FeedCard';
 import type { FeedItem } from '@/app/api/feed/route';
 
-type ApiResp = { page: number; pageSize: number; items: FeedItem[]; hasMore: boolean };
-const fetcher = (url: string) => fetch(url).then((r) => r.json() as Promise<ApiResp>);
-
 const FAV_KEY = 'feed-favorites';
 const SAVE_KEY = 'myPrompts';
 
-function loadSet(key: string) {
+function loadFavs(): Set<string> {
   try {
-    return new Set<string>(JSON.parse(localStorage.getItem(key) || '[]'));
+    return new Set<string>(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
   } catch {
     return new Set<string>();
   }
 }
-function saveSet(key: string, set: Set<string>) {
-  localStorage.setItem(key, JSON.stringify([...set]));
+function saveFavs(set: Set<string>) {
+  localStorage.setItem(FAV_KEY, JSON.stringify([...set]));
 }
 
 export default function InfiniteFeed() {
+  const [items, setItems] = useState<FeedItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [favSet, setFavSet] = useState<Set<string>>(new Set());
 
-  // Hydrate favorites from localStorage
+  // hydrate favorites
   useEffect(() => {
-    setFavSet(loadSet(FAV_KEY));
+    setFavSet(loadFavs());
   }, []);
 
-  const getKey = (pageIndex: number, previousPageData: ApiResp | null) => {
-    if (previousPageData && !previousPageData.hasMore) return null;
-    const page = pageIndex + 1;
-    return `/api/feed?page=${page}`;
-  };
+  // fetch one page
+  const fetchPage = useCallback(async (p: number) => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/feed?page=${p}`, { cache: 'no-store' });
+      const json = (await res.json()) as {
+        page: number;
+        pageSize: number;
+        items: FeedItem[];
+        hasMore: boolean;
+      };
+      setItems((prev) => [...prev, ...json.items]);
+      setHasMore(json.hasMore);
+      setPage(p);
+    } catch {
+      // ignore network hiccup; user can scroll to retry
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, hasMore]);
 
-  const { data, size, setSize, isLoading, isValidating } = useSWRInfinite<ApiResp>(
-    getKey,
-    fetcher,
-    { revalidateOnFocus: false }
-  );
+  // initial load
+  useEffect(() => {
+    fetchPage(1);
+  }, [fetchPage]);
 
-  const items = useMemo(
-    () => (data ? data.flatMap((d) => d.items) : []),
-    [data]
-  );
-
-  // IntersectionObserver to load next page
+  // sentinel observer
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (!sentinelRef.current) return;
     const el = sentinelRef.current;
-    const obs = new IntersectionObserver((entries) => {
-      const entry = entries[0];
-      if (entry.isIntersecting && !isLoading && !isValidating) {
-        setSize((s) => s + 1);
-      }
-    }, { rootMargin: '1200px' });
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && !loading && hasMore) {
+          fetchPage(page + 1);
+        }
+      },
+      { rootMargin: '1200px' }
+    );
     obs.observe(el);
-    return () => obs.unobserve(el);
-  }, [isLoading, isValidating, setSize]);
+    return () => obs.disconnect();
+  }, [page, loading, hasMore, fetchPage]);
 
   const onFavorite = useCallback((id: string, next: boolean) => {
     setFavSet((prev) => {
       const copy = new Set(prev);
       if (next) copy.add(id);
       else copy.delete(id);
-      saveSet(FAV_KEY, copy);
+      saveFavs(copy);
       return copy;
     });
   }, []);
@@ -82,7 +95,7 @@ export default function InfiniteFeed() {
       description: `Saved from ${item.source}.`,
       imageUrl: item.imageUrl,
       favorite: false,
-      createdAt: Date.now(),
+      createdAt: new Date().toISOString(),
       prompt: `Create a concept inspired by "${item.title}" (${item.source}).`,
     };
     try {
@@ -91,13 +104,12 @@ export default function InfiniteFeed() {
       localStorage.setItem(SAVE_KEY, JSON.stringify(list));
       alert('Saved to Mine!');
     } catch {
-      alert('Could not save locally (storage blocked).');
+      alert('Could not save locally.');
     }
   }, []);
 
-  return (
-    <div className="w-full">
-      {/* 3-col responsive grid */}
+  const grid = useMemo(
+    () => (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {items.map((item) => (
           <FeedCard
@@ -109,11 +121,15 @@ export default function InfiniteFeed() {
           />
         ))}
       </div>
+    ),
+    [items, favSet, onFavorite, onSave]
+  );
 
-      {/* sentinel for infinite scroll */}
-      <div ref={sentinelRef} className="h-12 w-full" />
-
-      {(isLoading || isValidating) && (
+  return (
+    <div className="w-full">
+      {grid}
+      <div ref={sentinelRef} className="h-16 w-full" />
+      {(loading || !items.length) && (
         <div className="py-8 text-center text-neutral-500">Loading…</div>
       )}
     </div>
