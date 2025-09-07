@@ -22,10 +22,9 @@ function normalizeMine(raw: unknown): Prompt[] {
       title: String(p?.title ?? 'Untitled prompt'),
       author: String(p?.author ?? 'Unknown'),
       description: String(p?.description ?? ''),
-      imageUrl: p?.imageUrl ?? null,
+      imageUrl: typeof p?.imageUrl === 'string' || p?.imageUrl === null ? p.imageUrl : null,
       favorite: Boolean(p?.favorite),
-      createdAt, // ✅ always a string (required by Prompt)
-      prompt: typeof p?.prompt === 'string' ? p.prompt : '',
+      createdAt, // ✅ required by Prompt
     } satisfies Prompt;
   });
 }
