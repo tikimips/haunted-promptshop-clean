@@ -1,18 +1,41 @@
 // app/api/generate-prompt/route.ts
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import OpenAI from "openai";
+
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req: Request) {
   try {
-    // In a real implementation, parse the image and call OpenAI vision or embeddings
-    // const body = await req.json(); // e.g., { imageBase64: '...', filename: '...' }
+    const { imageUrl } = await req.json();
 
-    // Temporary stub response:
-    return NextResponse.json({
-      ok: true,
-      prompt:
-        'Create a high-contrast, minimalist landing hero with bold headline, subcopy, and a single CTA button. Use soft shadows and generous whitespace.',
+    if (!imageUrl) {
+      return NextResponse.json({ error: "Missing imageUrl" }, { status: 400 });
+    }
+
+    // Call a vision-capable model (swap to your preferred one)
+    const result = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Analyze this image and turn it into a concise, creative design prompt." },
+            { type: "image_url", image_url: { url: imageUrl } },
+          ],
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 300,
     });
-  } catch (e) {
-    return NextResponse.json({ ok: false, error: 'Failed to generate prompt' }, { status: 500 });
+
+    const promptText = result.choices[0]?.message?.content?.trim() ?? "";
+
+    return NextResponse.json({
+      prompt: promptText,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Failed to generate" }, { status: 500 });
   }
 }

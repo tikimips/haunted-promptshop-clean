@@ -1,26 +1,29 @@
-'use client';
+// components/Tabs.tsx
+"use client";
 
-import { useState } from 'react';
-
-type Tab = { name: string; content: React.ReactNode };
-export default function Tabs({ tabs }: { tabs: Tab[] }) {
-  const [active, setActive] = useState(0);
+export default function Tabs({
+  active,
+  onChange,
+  labels = ["All", "Prompt Library"],
+}: {
+  active: "all" | "mine";
+  onChange: (v: "all" | "mine") => void;
+  labels?: [string, string] | string[];
+}) {
   return (
-    <div>
-      <div className="mb-4 flex gap-2">
-        {tabs.map((t, i) => (
-          <button
-            key={t.name}
-            onClick={() => setActive(i)}
-            className={`rounded-full px-3 py-1 text-sm ${
-              i === active ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'
-            }`}
-          >
-            {t.name}
-          </button>
-        ))}
-      </div>
-      <div>{tabs[active]?.content}</div>
+    <div className="mb-6 flex items-center gap-2">
+      <button
+        onClick={() => onChange("all")}
+        className={`rounded-full px-3 py-1 text-sm ${active === "all" ? "bg-black text-white" : "bg-neutral-100"}`}
+      >
+        {labels[0] ?? "All"}
+      </button>
+      <button
+        onClick={() => onChange("mine")}
+        className={`rounded-full px-3 py-1 text-sm ${active === "mine" ? "bg-black text-white" : "bg-neutral-100"}`}
+      >
+        {labels[1] ?? "Prompt Library"}
+      </button>
     </div>
   );
 }

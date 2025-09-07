@@ -1,22 +1,18 @@
-import './globals.css';
-import AuthButtons from '@/components/AuthButtons';
+// app/layout.tsx
+import "./globals.css";
+import { Toaster } from "react-hot-toast";
 
 export const metadata = {
-  title: 'Promptshop',
-  description: 'Inspiration & prompt library'
+  title: "Promptshop",
+  description: "Inspiration feed + prompt library",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-white text-gray-900">
-        <header className="border-b">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-            <div className="text-lg font-semibold">Promptshop</div>
-            <AuthButtons />
-          </div>
-        </header>
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <body className="bg-white text-neutral-900">
+        <Toaster position="top-right" />
+        {children}
       </body>
     </html>
   );
