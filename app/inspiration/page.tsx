@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Prompt } from '@/app/types';
 import PromptGrid from '@/components/PromptGrid';
 import SavePromptModal from '@/components/SavePromptModal';
-import { Clipboard, BookmarkPlus } from 'lucide-react';
+import { ClipboardIcon, BookmarkPlusIcon } from '@/components/icons';
 
 // --- Local storage helpers ---
 const STORAGE_KEY = 'ps_saved_prompts_v1';
@@ -126,7 +126,6 @@ export default function InspirationPage() {
       <div className="mb-6 rounded-2xl border border-neutral-200 bg-white p-4 md:p-5">
         <div className="flex items-start gap-4">
           <div className="hidden h-16 w-28 shrink-0 overflow-hidden rounded-xl bg-neutral-100 md:block">
-            {/* lightweight placeholder thumbnail */}
             <div className="h-full w-full bg-[radial-gradient(circle_at_30%_30%,#cbd5e1,transparent_60%),radial-gradient(circle_at_70%_70%,#e5e7eb,transparent_55%)]" />
           </div>
           <div className="flex-1">
@@ -145,7 +144,7 @@ export default function InspirationPage() {
               className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
               title="Copy to clipboard"
             >
-              <Clipboard className="h-4 w-4" />
+              <ClipboardIcon className="h-4 w-4" />
               Copy
             </button>
             <button
@@ -153,7 +152,7 @@ export default function InspirationPage() {
               className="inline-flex items-center gap-2 rounded-lg bg-black px-3 py-2 text-sm text-white hover:bg-black/90"
               title="Save prompt"
             >
-              <BookmarkPlus className="h-4 w-4" />
+              <BookmarkPlusIcon className="h-4 w-4" />
               Save
             </button>
           </div>

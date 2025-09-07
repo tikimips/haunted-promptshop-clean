@@ -3,7 +3,7 @@
 
 import Image from 'next/image';
 import { Prompt } from '@/app/types';
-import { Heart } from 'lucide-react';
+import { HeartOutline, HeartSolid } from '@/components/icons';
 
 type Props = {
   prompt: Prompt;
@@ -36,9 +36,11 @@ export default function PromptCard({ prompt, onFavoriteToggle }: Props) {
             onClick={() => onFavoriteToggle(id, !favorite)}
             className="absolute right-3 top-3 inline-flex items-center justify-center rounded-full bg-white/90 p-2 shadow-sm hover:bg-white"
           >
-            <Heart
-              className={`h-5 w-5 ${favorite ? 'fill-red-500 text-red-500' : 'text-neutral-700'}`}
-            />
+            {favorite ? (
+              <HeartSolid className="h-5 w-5 text-red-500" />
+            ) : (
+              <HeartOutline className="h-5 w-5 text-neutral-700" />
+            )}
           </button>
         )}
       </div>
