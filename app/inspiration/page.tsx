@@ -1,4 +1,3 @@
-// app/inspiration/page.tsx
 import PromptGrid from '@/components/PromptGrid';
 import { Prompt } from '@/app/types';
 
@@ -10,7 +9,7 @@ const SAMPLE_PROMPTS: Prompt[] = [
     description:
       'Generate UI copy for a sleek isometric analytics dashboard with monochrome palette.',
     imageUrl:
-      'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1200&auto=format&fit=crop', // Unsplash domain is already allowed in next.config.js
+      'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1200&auto=format&fit=crop',
   },
   {
     id: 2,
