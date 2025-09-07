@@ -3,7 +3,7 @@ import OpenAI, { type ChatCompletionContentPartImage } from "openai";
 
 export const runtime = "edge";
 
-// Convert a Blob/File to data URL (Edge-safe)
+/** Convert a Blob/File to a data: URL (Edge-safe) */
 async function blobToDataURL(b: Blob): Promise<string> {
   const bytes = new Uint8Array(await b.arrayBuffer());
   let binary = "";
@@ -29,11 +29,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const client = new OpenAI({ apiKey });
+    const openai = new OpenAI({ apiKey });
 
-    // Build image content in the format required by OpenAI SDK v4
+    // Build the image content for the v4 SDK
     let imagePart: ChatCompletionContentPartImage | null = null;
-
     if (imageFile && typeof imageFile === "object") {
       const dataUrl = await blobToDataURL(imageFile);
       imagePart = { type: "image_url", image_url: { url: dataUrl } };
@@ -43,21 +42,48 @@ export async function POST(req: Request) {
 
     if (!imagePart) {
       return NextResponse.json(
-        { error: "No image provided. Supply `image` (file) or `imageUrl` (string)." },
+        { error: "No image provided. Send a file 'image' or a string 'imageUrl'." },
         { status: 400 }
       );
     }
 
-    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    const userText = `Analyze this image and produce a single, reusable prompt suitable for generating new images in a similar style/subject.
+Title: ${title}
+${notes ? `User notes: ${notes}\n` : ""}Output ONLY the prompt text — no preamble, no bullet points, no quotes.`;
+
+    // Keep types simple to avoid version drift on SDK typings
+    const messages: any[] = [
       {
         role: "system",
         content:
-          "You are a prompt engineer. Given an image and optional user notes, craft a single, reusable, high-quality text prompt the user can paste into a generative model. Be concise but specific. Include style cues only if relevant.",
+          "You are a prompt engineer. Given an image and optional user notes, craft ONE concise, specific, high-quality text prompt the user can paste into a generative model.",
       },
       {
         role: "user",
         content: [
-          {
-            type: "text",
-            text:
-             
+          { type: "text", text: userText },
+          // conditionally add the image (cannot include nulls in the array)
+          ...(imagePart ? [imagePart] : []),
+        ],
+      },
+    ];
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      messages,
+    });
+
+    const promptText =
+      completion.choices?.[0]?.message?.content?.trim() ||
+      "A refined prompt could not be generated.";
+
+    return NextResponse.json({ promptText });
+  } catch (err: any) {
+    console.error("generate-prompt error:", err);
+    return NextResponse.json(
+      { error: err?.message || "Unexpected error generating prompt." },
+      { status: 500 }
+    );
+  }
+}
