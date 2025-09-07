@@ -1,75 +1,182 @@
-// app/api/generate-prompt/route.ts
-import { NextResponse } from "next/server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_PUBLIC;
+// Helper: turn a FormData file into a base64 data URL we can send to OpenAI
+async function fileToDataUrl(file: File) {
+  const buf = Buffer.from(await file.arrayBuffer());
+  const ext = (file.type || "image/jpeg").split("/")[1] || "jpeg";
+  const mime = file.type || `image/${ext}`;
+  const b64 = buf.toString("base64");
+  return `data:${mime};base64,${b64}`;
+}
 
-export const runtime = "nodejs";
+export async function POST(req: NextRequest) {
+  const startedAt = new Date().toISOString();
 
-export async function POST(req: Request) {
   try {
-    if (!OPENAI_API_KEY) {
+    // --- Basic env/inputs validation -------------------------------------------------
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error("[generate-prompt] Missing OPENAI_API_KEY");
       return NextResponse.json(
-        { error: "Missing OPENAI_API_KEY" },
+        { ok: false, error: "Server not configured (missing OPENAI_API_KEY)" },
         { status: 500 }
       );
     }
 
-    const { imageDataUrl, title } = await req.json();
-
-    if (!imageDataUrl || typeof imageDataUrl !== "string") {
-      return NextResponse.json({ error: "imageDataUrl (data URL) required" }, { status: 400 });
+    const form = await req.formData().catch((e) => {
+      console.error("[generate-prompt] Failed to parse formData()", e);
+      return null;
+    });
+    if (!form) {
+      return NextResponse.json(
+        { ok: false, error: "Invalid multipart request body" },
+        { status: 400 }
+      );
     }
 
-    // Ask OpenAI to write a clean, copy-ready prompt that matches the style of the image.
-    const payload = {
-      model: "gpt-4o-mini",
-      messages: [
+    const image = form.get("image");
+    const name = (form.get("name") as string | null) ?? undefined;
+    const notes = (form.get("notes") as string | null) ?? undefined;
+
+    if (!(image instanceof File) || !image.size) {
+      console.error("[generate-prompt] No image provided in form-data 'image'");
+      return NextResponse.json(
+        { ok: false, error: "Please attach an image." },
+        { status: 400 }
+      );
+    }
+
+    const imageDataUrl = await fileToDataUrl(image);
+
+    // --- OpenAI call -----------------------------------------------------------------
+    const openai = new OpenAI({ apiKey });
+
+    // You can change the model if you prefer
+    const model = process.env.OPENAI_VISION_MODEL || "gpt-4o-mini";
+
+    const systemMsg =
+      "You are a creative prompt engineer. Describe a concise, high-quality prompt that a designer could reuse. Focus on style, subject, composition, mood, palette, and key visual details. Keep it under 70 words.";
+
+    const userLeadIn =
+      notes && notes.trim().length
+        ? `User notes to consider: ${notes.trim()}`
+        : "Analyze the image and produce a reusable prompt.";
+
+    const resp = await openai.responses.create({
+      model,
+      input: [
         {
           role: "system",
-          content:
-            "You write concise, high-quality image-generation prompts in one paragraph. Avoid disclaimers. Include medium, lighting, composition, and style cues.",
+          content: [{ type: "text", text: systemMsg }],
         },
         {
           role: "user",
           content: [
-            { type: "text", text: `Create a copy-ready image-generation prompt inspired by this reference image. Title: ${title || "Untitled"}` },
-            { type: "image_url", image_url: { url: imageDataUrl } },
+            { type: "text", text: userLeadIn },
+            { type: "input_image", image_url: imageDataUrl },
           ],
         },
       ],
-      temperature: 0.7,
-    };
-
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
     });
 
-    if (!r.ok) {
-      const text = await r.text();
-      return NextResponse.json({ error: text }, { status: 500 });
+    // The SDK v4 returns a structured object. Safely extract the final text:
+    const text =
+      resp.output_text ??
+      (resp.output &&
+        Array.isArray(resp.output) &&
+        resp.output
+          .map((p: any) =>
+            p?.content
+              ? p.content
+                  .map((c: any) => (c?.text ? c.text : ""))
+                  .join("")
+              : ""
+          )
+          .join("")) ??
+      "";
+
+    if (!text || !text.trim()) {
+      console.error("[generate-prompt] OpenAI returned empty text", {
+        startedAt,
+        model,
+        responseId: (resp as any)?.id,
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "OpenAI did not return text. Check server logs for details.",
+        },
+        { status: 502 }
+      );
     }
 
-    const data = await r.json();
-    const promptText: string =
-      data?.choices?.[0]?.message?.content?.trim?.() || "A high-fidelity prompt based on your image.";
-
-    // Return a normalized Prompt object (client will handle saving later)
-    return NextResponse.json({
+    // Build the object your UI expects to store in “Prompt Library”
+    const prompt = {
       id: crypto.randomUUID(),
-      title: title || "Untitled",
+      title: name || "Generated prompt",
       author: "You",
       description: "Generated from your image.",
-      imageUrl: imageDataUrl,
-      promptText,
+      imageUrl: imageDataUrl, // thumbnail preview; swap to persisted URL if you later upload to storage
+      promptText: text.trim(),
       favorite: false,
       createdAt: new Date().toISOString(),
+    };
+
+    // If you later wire Supabase, you can insert() here. For now just return JSON:
+    console.info("[generate-prompt] Success", {
+      startedAt,
+      model,
+      chars: prompt.promptText.length,
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 });
+
+    return NextResponse.json({ ok: true, prompt }, { status: 200 });
+  } catch (err: any) {
+    // ---- MAX VERBOSITY LOGGING (shows up in Vercel function logs) ------------------
+    const status =
+      err?.status ||
+      err?.response?.status ||
+      err?.error?.status ||
+      500;
+
+    // Try to extract any server payload from OpenAI error
+    let serverPayload: any = undefined;
+    try {
+      serverPayload =
+        err?.response?.data ||
+        (typeof err?.response?.text === "function"
+          ? await err.response.text()
+          : undefined) ||
+        err?.error ||
+        err?.message;
+    } catch {
+      /* ignore */
+    }
+
+    console.error("[generate-prompt] FAILED", {
+      status,
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+      type: err?.type,
+      startedAt,
+      raw: serverPayload ?? err,
+      stack: err?.stack,
+    });
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          typeof serverPayload === "string"
+            ? serverPayload
+            : err?.message || "Failed to generate prompt.",
+      },
+      { status }
+    );
   }
 }
+
+export const runtime = "edge"; // remove if you prefer node runtime
+export const maxDuration = 30;

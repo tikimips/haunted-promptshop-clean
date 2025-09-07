@@ -24,7 +24,7 @@ export default function InspirationPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <GeneratePrompt />
+      <GeneratePrompt onSaved={(p) => setMine((m) => [p, ...m])} />
 
       <h1 className="mt-10 text-2xl font-bold">Inspiration</h1>
 

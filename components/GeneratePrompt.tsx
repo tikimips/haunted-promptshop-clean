@@ -2,8 +2,13 @@
 "use client";
 import { useRef, useState } from "react";
 import { ImageIcon, Camera, Loader2 } from "lucide-react";
+import type { Prompt } from "./PromptGrid";
 
-export default function GeneratePrompt() {
+type Props = {
+  onSaved?: (p: Prompt) => void;
+};
+
+export default function GeneratePrompt({ onSaved }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -18,7 +23,8 @@ export default function GeneratePrompt() {
 
   const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]);
+    const f = e.dataTransfer.files?.[0];
+    if (f) onFile(f);
   };
 
   const onChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
@@ -26,13 +32,19 @@ export default function GeneratePrompt() {
     if (f) onFile(f);
   };
 
+  const fileToDataUrl = (f: File) =>
+    new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onerror = () => reject(fr.error);
+      fr.onload = () => resolve(String(fr.result));
+      fr.readAsDataURL(f);
+    });
+
   const generate = async () => {
     if (!file) return;
     setBusy(true);
     try {
-      const buf = await file.arrayBuffer();
-      const base64 = Buffer.from(buf).toString("base64");
-      const dataUrl = `data:${file.type};base64,${base64}`;
+      const dataUrl = await fileToDataUrl(file);
 
       const res = await fetch("/api/generate-prompt", {
         method: "POST",
@@ -40,15 +52,16 @@ export default function GeneratePrompt() {
         body: JSON.stringify({ imageDataUrl: dataUrl, title: title || "Untitled" }),
       });
 
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || "Failed");
-      }
-      // Optionally show a toast here; keeping minimal
+      if (!res.ok) throw new Error(await res.text());
+      const prompt: Prompt = await res.json();
+
+      onSaved?.(prompt); // drop it into “Prompt Library”
       setFile(null);
+      setTitle("");
+      alert("Prompt generated and saved to your library.");
     } catch (e) {
       console.error(e);
-      alert("Failed to generate prompt. Check server logs / API key.");
+      alert("Failed to generate prompt. Check your OpenAI key & function logs.");
     } finally {
       setBusy(false);
     }
@@ -118,13 +131,7 @@ export default function GeneratePrompt() {
         )}
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={onChange}
-      />
+      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={onChange} />
     </section>
   );
 }
