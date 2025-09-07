@@ -4,6 +4,9 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 import Header from "@/components/Header";
 
+// mount react-hot-toast once for the whole app
+import { Toaster } from "react-hot-toast";
+
 export const metadata: Metadata = {
   title: "Promptshop",
   description: "Inspiration and prompt library",
@@ -17,6 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
         </Providers>
+
+        {/* Global toast portal */}
+        <Toaster position="top-right" />
       </body>
     </html>
   );
