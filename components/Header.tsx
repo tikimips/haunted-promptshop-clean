@@ -12,11 +12,11 @@ export default function Header() {
         <nav className="flex items-center gap-4">
           <Link href="/inspiration" className="text-sm hover:underline">Inspiration</Link>
           <Link href="/library" className="text-sm hover:underline">Prompt Library</Link>
-          {/* Auth placeholders */}
+          {/* Placeholder auth buttons so UI is back; swap with real auth later */}
           <button
             type="button"
             className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
-            onClick={() => alert("Google OAuth not yet configured. See README in auth section.")}
+            onClick={() => alert("Hook up Google OAuth later. This is a placeholder button.")}
           >
             Continue with Google
           </button>

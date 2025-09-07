@@ -14,7 +14,7 @@ type Props = {
 export default function Tabs({ tabs, value, onChange }: Props) {
   return (
     <div className="mt-6 flex gap-2">
-      {tabs.map(t => (
+      {tabs.map((t) => (
         <button
           key={t.value}
           className={clsx(

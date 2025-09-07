@@ -2,18 +2,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import PromptGrid from "@/components/PromptGrid";
 import type { Prompt } from "@/app/types";
-import { readMine, writeMineAll } from "@/lib/storage";
+import PromptGrid from "@/components/PromptGrid";
+import { readMine, toggleFavorite, writeMine } from "@/lib/storage";
 
 export default function LibraryPage() {
   const [mine, setMine] = useState<Prompt[]>([]);
 
-  useEffect(() => setMine(readMine()), []);
+  useEffect(() => {
+    setMine(readMine());
+  }, []);
 
   const sorted = useMemo(() => {
-    const favs = mine.filter(m => m.favorite).sort((a, b) => a.title.localeCompare(b.title));
-    const rest = mine.filter(m => !m.favorite);
+    const favs = mine.filter((m) => m.favorite).sort((a, b) => a.title.localeCompare(b.title));
+    const rest = mine
+      .filter((m) => !m.favorite)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
     return [...favs, ...rest];
   }, [mine]);
 
@@ -23,13 +27,13 @@ export default function LibraryPage() {
       {sorted.length ? (
         <PromptGrid
           items={sorted}
-          onToggleFavorite={(p) => {
-            const updated = mine.map(it =>
-              it.id === p.id ? { ...it, favorite: !it.favorite } : it
-            );
-            setMine(updated);
-            writeMineAll(updated);
+          onCopy={async (p) => {
+            try {
+              await navigator.clipboard.writeText(p.promptText);
+            } catch {}
           }}
+          onSave={(p) => setMine(writeMine(p))}
+          onToggleFavorite={(p) => setMine(toggleFavorite(p.id))}
         />
       ) : (
         <p className="py-10 text-center text-neutral-500">
