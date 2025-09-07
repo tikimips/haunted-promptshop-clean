@@ -1,41 +1,31 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import clsx from 'clsx';
+import { useState } from 'react';
 
-const tabs = [
-  { href: '/inspiration', label: 'Inspiration' },
-  { href: '/library', label: 'Library' },
-];
+type TabDef = {
+  name: string;
+  content: React.ReactNode;
+};
 
-export default function Tabs() {
-  const pathname = usePathname();
+export default function Tabs({ tabs }: { tabs: TabDef[] }) {
+  const [active, setActive] = useState(0);
 
   return (
-    <nav aria-label="Primary tabs" className="border-b">
-      <ul className="-mb-px flex gap-4">
-        {tabs.map((t) => {
-          const active = pathname === t.href;
-          return (
-            <li key={t.href}>
-              <Link
-                href={t.href}
-                className={clsx(
-                  'inline-flex items-center gap-2 rounded-t-md px-3 py-2 text-sm',
-                  'border-b-2 transition-colors',
-                  active
-                    ? 'border-black font-semibold text-black'
-                    : 'border-transparent text-gray-500 hover:text-black hover:border-gray-300'
-                )}
-                aria-current={active ? 'page' : undefined}
-              >
-                {t.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    <div>
+      <div className="flex gap-2 border-b border-neutral-200 mb-4">
+        {tabs.map((t, i) => (
+          <button
+            key={t.name}
+            onClick={() => setActive(i)}
+            className={`px-3 py-2 text-sm rounded-t-lg transition
+              ${i === active ? 'font-semibold border-b-2 border-black' : 'text-neutral-500 hover:text-black'}`}
+          >
+            {t.name}
+          </button>
+        ))}
+      </div>
+
+      <div>{tabs[active]?.content}</div>
+    </div>
   );
 }
