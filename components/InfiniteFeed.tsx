@@ -1,127 +1,103 @@
-// components/InfiniteFeed.tsx
-'use client';
+// app/inspiration/page.tsx
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import FeedCard from './FeedCard';
-import type { FeedItem } from '@/app/api/feed/route';
+import { useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
+import InfiniteFeed from "@/components/InfiniteFeed";
+import PromptGrid, { Prompt } from "@/components/PromptGrid";
 
-const FAV_KEY = 'feed-favorites';
-const SAVE_KEY = 'myPrompts';
+export default function InspirationPage() {
+  const [file, setFile] = useState<File | null>(null);
+  const [name, setName] = useState("");
 
-function loadFavs(): Set<string> {
-  try {
-    return new Set<string>(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
-  } catch {
-    return new Set<string>();
-  }
-}
-function saveFavs(set: Set<string>) {
-  localStorage.setItem(FAV_KEY, JSON.stringify([...set]));
-}
-
-export default function InfiniteFeed() {
-  const [items, setItems] = useState<FeedItem[]>([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [favSet, setFavSet] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    setFavSet(loadFavs());
-  }, []);
-
-  const fetchPage = useCallback(async (p: number) => {
-    if (loading || !hasMore) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/feed?page=${p}`, { cache: 'no-store' });
-      const json = (await res.json()) as {
-        page: number;
-        pageSize: number;
-        items: FeedItem[];
-        hasMore: boolean;
-      };
-      setItems((prev) => [...prev, ...json.items]);
-      setHasMore(json.hasMore);
-      setPage(p);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
+  const onGenerate = async () => {
+    if (!file) {
+      toast.error("Add an image first.");
+      return;
     }
-  }, [loading, hasMore]);
-
-  useEffect(() => { fetchPage(1); }, [fetchPage]);
-
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting && !loading && hasMore) fetchPage(page + 1);
-      },
-      { rootMargin: '1000px' }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [page, loading, hasMore, fetchPage]);
-
-  const onFavorite = useCallback((id: string, next: boolean) => {
-    setFavSet((prev) => {
-      const copy = new Set(prev);
-      if (next) copy.add(id); else copy.delete(id);
-      saveFavs(copy);
-      return copy;
-    });
-  }, []);
-
-  const onSave = useCallback((item: FeedItem) => {
-    const name = window.prompt('Name this prompt:', item.title || 'Untitled prompt');
-    const entry = {
-      id: `saved-${item.id}-${Date.now()}`,
-      title: name || item.title || 'Untitled prompt',
-      author: item.author || item.source,
-      description: `Saved from ${item.source}.`,
-      imageUrl: item.imageUrl,
-      favorite: false,
-      createdAt: new Date().toISOString(),
-    };
     try {
-      const list = JSON.parse(localStorage.getItem(SAVE_KEY) || '[]');
-      list.unshift(entry);
-      localStorage.setItem(SAVE_KEY, JSON.stringify(list));
-    } catch { /* noop */ }
-  }, []);
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("name", name || "Untitled");
 
-  const grid = useMemo(
-    () => (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        {items.map((item) => (
-          <FeedCard
-            key={item.id}
-            item={item}
-            onSave={onSave}
-            onFavorite={onFavorite}
-            isFavorite={favSet.has(item.id)}
-          />
-        ))}
-      </div>
-    ),
-    [items, favSet, onFavorite, onSave]
-  );
+      const res = await fetch("/api/generate-prompt", { method: "POST", body: fd });
+      const json = await res.json();
+
+      if (!res.ok) {
+        toast.error(json?.error ?? "Failed to generate prompt.");
+        return;
+      }
+
+      const promptText: string = json.prompt;
+      toast.success("Prompt saved to your library.");
+      // Here you’d also persist to your DB; for demo we just log
+      console.log("Generated prompt:", promptText);
+      setName("");
+      setFile(null);
+    } catch (e: any) {
+      toast.error("Failed to generate prompt.");
+      console.error(e);
+    }
+  };
+
+  // demo “Mine” list (empty until you wire persistence)
+  const mine: Prompt[] = [];
 
   return (
-    <div className="w-full">
-      {grid}
-      <div ref={sentinelRef} className="h-16 w-full" />
-      {(loading || !items.length) && (
-        <div className="py-8 text-center text-neutral-500">Loading…</div>
-      )}
-      {!hasMore && (
-        <div className="py-8 text-center text-neutral-400">End of feed</div>
-      )}
-    </div>
+    <main className="mx-auto max-w-6xl px-5 py-10">
+      <Toaster />
+
+      {/* Generate Prompt box */}
+      <section className="mb-8 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="mb-2 text-sm font-semibold">+ Generate Prompt</div>
+        <p className="mb-4 text-sm text-neutral-600">
+          Drop or choose an image, give it a name, then click <b>Generate Prompt</b>.
+          We’ll analyze the image and save it to your Prompt Library.
+        </p>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="w-full rounded-md border border-neutral-300 p-2 text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full rounded-md border border-neutral-300 p-2 text-sm sm:max-w-xs"
+          />
+          <button
+            onClick={onGenerate}
+            className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+          >
+            Generate Prompt
+          </button>
+        </div>
+      </section>
+
+      {/* Tabs */}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="rounded-full bg-black px-3 py-1 text-xs font-medium text-white">
+          All
+        </span>
+        <span className="rounded-full bg-neutral-200 px-3 py-1 text-xs text-neutral-700">
+          Prompt Library
+        </span>
+      </div>
+
+      {/* Infinite feed (3 cols on desktop) */}
+      <InfiniteFeed />
+
+      {/* (Optional) “Mine” section if you want to render it here */}
+      {mine.length ? (
+        <>
+          <h2 className="mt-12 mb-3 text-lg font-semibold">Prompt Library</h2>
+          <PromptGrid prompts={mine} />
+        </>
+      ) : null}
+    </main>
   );
 }
