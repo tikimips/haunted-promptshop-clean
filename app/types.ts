@@ -1,10 +1,10 @@
 // app/types.ts
 export type Prompt = {
-  id: string;               // unique id (uuid-ish)
-  title: string;            // user-supplied name
-  author?: string | null;   // optional
-  description?: string;     // the actual prompt text (what we copy)
-  imageUrl?: string | null; // thumbnail
-  createdAt: string;        // ISO date
-  favorite?: boolean;       // ❤️
+  id: string;
+  title: string;           // user-given name for the instance
+  author: string;          // "You" or source
+  description: string;     // the generated prompt text
+  imageUrl: string | null; // data URL or remote URL
+  favorite: boolean;
+  createdAt: string;       // ISO string
 };

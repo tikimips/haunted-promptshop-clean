@@ -1,64 +1,75 @@
 // components/PromptCard.tsx
 'use client';
 
-import Image from 'next/image';
-import { Prompt } from '@/app/types';
-import { HeartOutline, HeartSolid } from '@/components/icons';
+import { useCallback } from 'react';
+import type { Prompt } from '@/app/types';
+import { useToast } from '@/components/Toast';
 
-type Props = {
-  prompt: Prompt;
-  onFavoriteToggle?: (id: string, next: boolean) => void;
-};
+const SAVE_KEY = 'myPrompts';
 
-const FALLBACK_IMG =
-  'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1400&auto=format&fit=crop';
+export default function PromptCard({ prompt }: { prompt: Prompt }) {
+  const { addToast } = useToast();
 
-export default function PromptCard({ prompt, onFavoriteToggle }: Props) {
-  const {
-    id,
-    title,
-    author = '',
-    description = '',
-    imageUrl,
-    favorite = false,
-  } = prompt;
+  const copy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(prompt.description || '');
+      addToast({ message: 'Prompt copied to clipboard 📋', variant: 'success' });
+    } catch {
+      addToast({ message: 'Could not copy. Select and copy manually.', variant: 'error' });
+    }
+  }, [prompt, addToast]);
 
-  // Make src a definite string for next/image
-  const imgSrc: string = imageUrl ?? FALLBACK_IMG;
-  const altText = title || 'Prompt image';
+  const toggleFav = useCallback(() => {
+    try {
+      const list: Prompt[] = JSON.parse(localStorage.getItem(SAVE_KEY) || '[]');
+      const idx = list.findIndex((p) => p.id === prompt.id);
+      if (idx >= 0) {
+        list[idx].favorite = !list[idx].favorite;
+        localStorage.setItem(SAVE_KEY, JSON.stringify(list));
+        window.dispatchEvent(new Event('storage'));
+        addToast({
+          message: list[idx].favorite ? 'Added to favorites ❤️' : 'Removed from favorites 💔',
+          variant: 'info',
+        });
+      }
+    } catch { /* noop */ }
+  }, [prompt.id, addToast]);
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-      <div className="relative aspect-[16/9] w-full">
-        <Image
-          src={imgSrc}
-          alt={altText}
-          fill
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, 50vw"
+    <div className="group relative rounded-xl border border-neutral-200 bg-white shadow-sm transition hover:shadow-md">
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl bg-neutral-100">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={prompt.imageUrl || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80&auto=format&fit=crop'}
+          alt={prompt.title}
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
         />
-        {onFavoriteToggle && (
+        {/* Hover overlay quick actions */}
+        <div className="pointer-events-none absolute inset-0 flex items-end justify-end gap-2 p-3 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
           <button
-            aria-label={favorite ? 'Unfavorite' : 'Favorite'}
-            onClick={() => onFavoriteToggle(id, !favorite)}
-            className="absolute right-3 top-3 inline-flex items-center justify-center rounded-full bg-white/90 p-2 shadow-sm hover:bg-white"
+            onClick={(e) => { e.stopPropagation(); copy(); }}
+            className="rounded-md bg-white/90 px-3 py-1 text-sm font-medium text-neutral-900 shadow"
           >
-            {favorite ? (
-              <HeartSolid className="h-5 w-5 text-red-500" />
-            ) : (
-              <HeartOutline className="h-5 w-5 text-neutral-700" />
-            )}
+            Copy
           </button>
-        )}
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleFav(); }}
+            className="rounded-md bg-black/80 px-3 py-1 text-sm font-medium text-white shadow"
+          >
+            {prompt.favorite ? '♥' : '♡'}
+          </button>
+        </div>
       </div>
 
-      <div className="p-4">
-        <h3 className="text-xl font-semibold">{title}</h3>
-        {!!author && <p className="text-sm text-neutral-600 mt-1">{author}</p>}
-        {!!description && (
-          <p className="text-neutral-700 mt-3 leading-relaxed line-clamp-3">{description}</p>
-        )}
+      <div className="px-4 py-3">
+        <div className="line-clamp-1 text-base font-semibold text-neutral-900">
+          {prompt.title}
+        </div>
+        <div className="mt-0.5 text-sm text-neutral-500">
+          {new Date(prompt.createdAt).toLocaleDateString()} · {prompt.author}
+        </div>
       </div>
-    </article>
+    </div>
   );
 }
