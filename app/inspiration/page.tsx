@@ -1,11 +1,10 @@
 // app/inspiration/page.tsx
 import PromptGrid from "@/components/PromptGrid";
-import { Prompt } from "../types"; // app/inspiration -> ../types
+import { Prompt } from "../types";
 
-// Temporary sample cards to verify UI
 const SAMPLE_PROMPTS: Prompt[] = [
   {
-    id: "1",
+    id: "1", // must be string
     title: "Isometric dashboard",
     author: "Top Designer",
     description:
@@ -14,7 +13,7 @@ const SAMPLE_PROMPTS: Prompt[] = [
       "https://images.unsplash.com/photo-1547082299-de196ea013d6?q=80&w=1600&auto=format&fit=crop",
   },
   {
-    id: "2",
+    id: "2", // must be string
     title: "Flat icon set",
     author: "Studio",
     description:
