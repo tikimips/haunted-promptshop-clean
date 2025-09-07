@@ -1,7 +1,8 @@
-/* Central app types */
+// app/types.ts
 
 export type Prompt = {
-  id: string;                       // keep as string for easy keys/URLs
+  // Keep id flexible while you wire things up (Supabase UUIDs are strings).
+  id: string | number;
   title: string;
   author?: string | null;
   description?: string | null;
