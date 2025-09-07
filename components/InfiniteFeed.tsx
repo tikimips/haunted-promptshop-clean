@@ -1,93 +1,52 @@
-// components/InfiniteFeed.tsx
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import PromptGrid from "./PromptGrid";
+import { useEffect, useRef, useState } from "react";
 import type { Prompt } from "@/app/types";
+import PromptGrid from "./PromptGrid";
 
 type Props = {
-  onCopy?: (p: Prompt) => void;
+  loadPage: (page: number) => Promise<Prompt[]>;
   onSave?: (p: Prompt) => void;
   onToggleFavorite?: (p: Prompt) => void;
 };
 
-export default function InfiniteFeed(props: Props) {
-  const [page, setPage] = useState(0);
+export default function InfiniteFeed({ loadPage, onSave, onToggleFavorite }: Props) {
   const [items, setItems] = useState<Prompt[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
   const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const loadPage = useCallback(
-    async (nextPage: number) => {
-      if (loading || done) return;
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/feed?page=${nextPage}`, { cache: "no-store" });
-        const data = await res.json();
-        const newItems: Prompt[] = data.items ?? [];
-        if (newItems.length === 0) setDone(true);
-        setItems((prev) => [...prev, ...newItems]);
+  useEffect(() => { void grab(page); }, []); // first page
+
+  async function grab(pg: number) {
+    if (loading || done) return;
+    setLoading(true);
+    const next = await loadPage(pg);
+    setItems(prev => [...prev, ...next]);
+    setDone(next.length === 0);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !loading && !done) {
+        const nextPage = page + 1;
         setPage(nextPage);
-      } catch {
-        // ignore
-      } finally {
-        setLoading(false);
+        void grab(nextPage);
       }
-    },
-    [loading, done]
-  );
-
-  // Ensure we fill viewport on first load
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (cancelled) return;
-      await loadPage(1);
-      // Keep loading until we exceed viewport or we tried 4 pages
-      let tries = 0;
-      while (!cancelled && document.body.scrollHeight < window.innerHeight * 1.6 && tries < 3 && !done) {
-        await loadPage(tries + 2);
-        tries++;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [loadPage, done]);
-
-  // IntersectionObserver
-  useEffect(() => {
-    if (!sentinelRef.current || done) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        const first = entries[0];
-        if (first.isIntersecting && !loading) loadPage(page + 1);
-      },
-      { root: null, rootMargin: "1200px 0px", threshold: 0 }
-    );
+    }, { rootMargin: "100px" });
     io.observe(sentinelRef.current);
     return () => io.disconnect();
-  }, [page, loading, done, loadPage]);
-
-  const showLoadMore = useMemo(() => !done && !loading, [done, loading]);
+  }, [page, loading, done]);
 
   return (
     <>
-      <PromptGrid items={items} {...props} />
+      <PromptGrid items={items} onSave={onSave} onToggleFavorite={onToggleFavorite} />
       <div ref={sentinelRef} className="py-6 text-center text-sm text-neutral-500">
         {done ? "— End —" : loading ? "Loading…" : "Scroll to load more"}
       </div>
-      {showLoadMore && (
-        <div className="pb-10 text-center">
-          <button
-            className="rounded-md border px-4 py-2 text-sm hover:bg-neutral-50"
-            onClick={() => loadPage(page + 1)}
-          >
-            Load more
-          </button>
-        </div>
-      )}
     </>
   );
 }

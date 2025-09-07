@@ -1,11 +1,10 @@
-// app/types.ts
 export type Prompt = {
   id: string;
   title: string;
   author: string;
   description: string;
   imageUrl: string;
-  promptText: string; // required
+  promptText?: string;
   favorite: boolean;
-  createdAt: string;  // ISO
+  createdAt: string; // ISO
 };

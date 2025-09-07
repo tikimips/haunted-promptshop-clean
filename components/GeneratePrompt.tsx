@@ -1,165 +1,131 @@
-// components/GeneratePrompt.tsx
 "use client";
-
 import { useRef, useState } from "react";
+import { ImageIcon, Camera, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 import type { Prompt } from "@/app/types";
 
-type Props = {
-  onSaved?: (p: Prompt) => void;
-};
+type Props = { onSaved?: (p: Prompt) => void };
 
 export default function GeneratePrompt({ onSaved }: Props) {
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
-  const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
-  const [message, setMessage] = useState<string>("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const onPick = () => fileRef.current?.click();
-  const onFile = (f: File | null) => setFile(f);
+  function onFileChange(f?: File) {
+    if (!f) return;
+    setFile(f);
+    const r = new FileReader();
+    r.onload = () => setPreview(r.result as string);
+    r.readAsDataURL(f);
+  }
 
-  const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]);
-  };
-
-  const generate = async () => {
-    if (!file) {
-      setMessage("Attach an image first.");
-      setStatus("error");
-      return;
-    }
-    setStatus("working");
-    setMessage("");
-
+  async function onGenerate() {
     try {
+      if (!file && !note.trim()) {
+        toast.error("Add an image or a note first."); return;
+      }
+      setBusy(true);
       const fd = new FormData();
-      fd.append("image", file);
+      if (file) fd.append("file", file);
       fd.append("name", name || "Untitled");
-      fd.append("notes", notes);
+      fd.append("note", note);
 
       const res = await fetch("/api/generate-prompt", { method: "POST", body: fd });
-      if (!res.ok) throw new Error("Failed to generate prompt");
-      const data = (await res.json()) as { promptText: string };
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Failed to generate");
 
-      const imageUrl = URL.createObjectURL(file);
-      const now = new Date().toISOString();
-      const saved: Prompt = {
+      const p: Prompt = {
         id: `${Date.now()}`,
         title: name || "Untitled",
         author: "You",
-        description: notes || "Generated from your image",
-        imageUrl,
-        promptText: data.promptText,
+        description: "Generated from your image",
+        imageUrl: preview || "/placeholder.png",
+        promptText: json.promptText,
         favorite: false,
-        createdAt: now,
+        createdAt: new Date().toISOString(),
       };
 
-      onSaved?.(saved);
-      setStatus("done");
-      setMessage("✅ Prompt saved to your library.");
-      setFile(null);
-      setName("");
-      setNotes("");
+      onSaved?.(p);
+      toast.success("Prompt saved to your Library");
+      setFile(null); setPreview(null); setName(""); setNote("");
     } catch (e: any) {
-      setStatus("error");
-      setMessage(e?.message || "Failed to generate prompt.");
-    }
-  };
+      toast.error(e?.message || "Generation failed");
+    } finally { setBusy(false); }
+  }
 
   return (
-    <div className="mt-6 rounded-xl border p-4">
-      <h2 className="mb-3 text-lg font-semibold">Generate Prompt from Image</h2>
+    <section className="rounded-2xl border bg-white p-4">
+      <h2 className="mb-3 text-xl font-semibold">Generate Prompt from Image</h2>
 
-      <div
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={onDrop}
-        className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-6 text-center"
-      >
-        {file ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              alt="selected"
-              src={URL.createObjectURL(file)}
-              className="h-32 w-48 rounded-md object-cover"
-            />
-            <div className="text-xs text-neutral-600">{file.name}</div>
-            <button
-              className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
-              onClick={() => setFile(null)}
-            >
-              Remove
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="text-sm text-neutral-600">
-              Drag &amp; drop an image here or choose a file
+      <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+        <div className="rounded-lg border bg-neutral-50 p-3 text-center">
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={preview} alt="preview" className="mx-auto aspect-video w-full rounded object-cover" />
+          ) : (
+            <div className="flex aspect-video w-full items-center justify-center rounded border border-dashed">
+              <div className="flex flex-col items-center text-neutral-500">
+                <ImageIcon className="mb-2 h-6 w-6" />
+                <div className="text-sm">Drag & drop or upload</div>
+              </div>
             </div>
-            <button
-              className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
-              onClick={onPick}
-            >
-              Choose File
-            </button>
+          )}
+          <div className="mt-3 flex justify-center gap-2">
             <input
+              ref={inputRef}
               type="file"
               accept="image/*"
-              ref={fileRef}
               className="hidden"
-              onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => onFileChange(e.target.files?.[0] || undefined)}
             />
-          </>
-        )}
-      </div>
+            <button onClick={() => inputRef.current?.click()} className="rounded border px-3 py-1 text-sm">Upload</button>
+            <button
+              onClick={async () => {
+                // mobile camera capture
+                const el = document.createElement("input");
+                el.type = "file";
+                el.accept = "image/*";
+                el.capture = "environment";
+                el.onchange = (e: any) => onFileChange(e.target.files?.[0] || undefined);
+                el.click();
+              }}
+              className="flex items-center gap-1 rounded border px-3 py-1 text-sm"
+            >
+              <Camera className="h-4 w-4" /> Camera
+            </button>
+          </div>
+        </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-neutral-600">Name</label>
+        <div className="space-y-3">
           <input
-            className="rounded-md border px-3 py-2 text-sm"
-            placeholder="Give this prompt a name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder="Name this prompt"
+            className="w-full rounded border px-3 py-2"
           />
-        </div>
-
-        <div className="flex flex-col gap-1 sm:col-span-2">
-          <label className="text-xs text-neutral-600">Notes (optional)</label>
           <textarea
-            className="min-h-[80px] rounded-md border px-3 py-2 text-sm"
-            placeholder="What should the prompt capture?"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Optional notes to guide the analysis"
+            className="h-28 w-full rounded border px-3 py-2"
           />
+          <div className="flex justify-end">
+            <button
+              onClick={onGenerate}
+              disabled={busy}
+              className="flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-white disabled:opacity-60"
+            >
+              {busy && <Loader2 className="h-4 w-4 animate-spin" />} Generate Prompt
+            </button>
+          </div>
+          <p className="text-xs text-neutral-500">
+            We’ll analyze the image with OpenAI and save the result to your Prompt Library.
+          </p>
         </div>
       </div>
-
-      <div className="mt-4 flex items-center gap-2">
-        <button
-          className="rounded-md bg-black px-4 py-2 text-sm text-white hover:bg-neutral-800 disabled:opacity-50"
-          disabled={!file || status === "working"}
-          onClick={generate}
-        >
-          {status === "working" ? "Generating…" : "Generate Prompt"}
-        </button>
-
-        {message && (
-          <span
-            className={
-              status === "error"
-                ? "text-sm text-red-600"
-                : status === "done"
-                ? "text-sm text-green-600"
-                : "text-sm text-neutral-600"
-            }
-          >
-            {message}
-          </span>
-        )}
-      </div>
-    </div>
+    </section>
   );
 }

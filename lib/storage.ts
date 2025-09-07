@@ -1,40 +1,28 @@
-// lib/storage.ts
 "use client";
-
 import type { Prompt } from "@/app/types";
-const KEY = "mine-prompts";
+
+const KEY = "promptshop.mine.v1";
 
 export function readMine(): Prompt[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Prompt[];
-    return parsed.map((p) => ({
-      ...p,
-      promptText: typeof p.promptText === "string" ? p.promptText : "",
-      favorite: Boolean(p.favorite),
-      createdAt: p.createdAt || new Date().toISOString(),
-    }));
-  } catch {
-    return [];
-  }
+    const s = localStorage.getItem(KEY);
+    return s ? (JSON.parse(s) as Prompt[]) : [];
+  } catch { return []; }
 }
 
 export function writeMine(newItem: Prompt): Prompt[] {
-  const current = readMine();
-  const updated = [newItem, ...current];
-  localStorage.setItem(KEY, JSON.stringify(updated));
-  return updated;
-}
-
-export function overwriteMine(items: Prompt[]) {
-  localStorage.setItem(KEY, JSON.stringify(items));
+  const all = readMine();
+  const idx = all.findIndex(x => x.id === newItem.id);
+  if (idx >= 0) all[idx] = newItem; else all.unshift(newItem);
+  localStorage.setItem(KEY, JSON.stringify(all));
+  return all;
 }
 
 export function toggleFavorite(id: string): Prompt[] {
-  const current = readMine();
-  const updated = current.map((p) => (p.id === id ? { ...p, favorite: !p.favorite } : p));
-  overwriteMine(updated);
-  return updated;
+  const all = readMine();
+  const i = all.findIndex(p => p.id === id);
+  if (i >= 0) all[i].favorite = !all[i].favorite;
+  localStorage.setItem(KEY, JSON.stringify(all));
+  return all;
 }

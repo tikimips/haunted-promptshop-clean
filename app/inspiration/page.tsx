@@ -1,32 +1,23 @@
-// app/inspiration/page.tsx
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Tabs from "@/components/Tabs";
-import InfiniteFeed from "@/components/InfiniteFeed";
-import PromptGrid from "@/components/PromptGrid";
-import GeneratePrompt from "@/components/GeneratePrompt";
+import { useCallback, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import type { Prompt } from "@/app/types";
 import { readMine, writeMine, toggleFavorite } from "@/lib/storage";
+import { loadFeedPage } from "@/lib/feed";
+import PromptGrid from "@/components/PromptGrid";
+import GeneratePrompt from "@/components/GeneratePrompt";
+import InfiniteFeed from "@/components/InfiniteFeed";
 
 export default function InspirationPage() {
-  const [tab, setTab] = useState<"all" | "mine">("all");
   const [mine, setMine] = useState<Prompt[]>([]);
 
-  useEffect(() => {
-    setMine(readMine());
-  }, []);
+  useEffect(() => { setMine(readMine()); }, []);
 
-  const handleCopy = useCallback(async (p: Prompt) => {
-    try {
-      await navigator.clipboard.writeText(p.promptText);
-    } catch {}
-  }, []);
-
-  const handleSave = useCallback((p: Prompt) => {
+  const handleSaved = useCallback((p: Prompt) => {
     const updated = writeMine(p);
     setMine(updated);
-    setTab("mine");
+    toast.success("Saved to Prompt Library");
   }, []);
 
   const handleToggleFavorite = useCallback((p: Prompt) => {
@@ -34,51 +25,29 @@ export default function InspirationPage() {
     setMine(updated);
   }, []);
 
-  const mineSorted = useMemo(() => {
-    const favs = mine.filter((m) => m.favorite).sort((a, b) => a.title.localeCompare(b.title));
-    const rest = mine
-      .filter((m) => !m.favorite)
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-    return [...favs, ...rest];
-  }, [mine]);
-
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="text-2xl font-bold">Inspiration</h1>
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      <GeneratePrompt onSaved={handleSaved} />
 
-      <Tabs
-        tabs={[
-          { value: "all", label: "All" },
-          { value: "mine", label: "Prompt Library" },
-        ]}
-        value={tab}
-        onChange={setTab}
+      <h1 className="mt-10 text-2xl font-bold">Inspiration</h1>
+      <p className="mb-4 text-sm text-neutral-600">Hover any tile to Copy / Save / Favorite. Infinite scroll loads more.</p>
+
+      <InfiniteFeed
+        loadPage={loadFeedPage}
+        onSave={handleSaved}
+        onToggleFavorite={handleToggleFavorite}
       />
 
-      <GeneratePrompt onSaved={handleSave} />
-
-      {tab === "all" ? (
-        <div className="mt-6">
-          <InfiniteFeed
-            onCopy={handleCopy}
-            onSave={handleSave}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        </div>
-      ) : mineSorted.length ? (
-        <div className="mt-6">
+      {mine.length > 0 && (
+        <>
+          <h2 className="mt-10 text-xl font-semibold">Recently Saved</h2>
           <PromptGrid
-            items={mineSorted}
-            onCopy={handleCopy}
-            onSave={handleSave}
+            items={mine}
+            onSave={handleSaved}
             onToggleFavorite={handleToggleFavorite}
           />
-        </div>
-      ) : (
-        <p className="py-10 text-center text-neutral-500">
-          Nothing saved yet. Use <b>Save</b> on any card to add it here.
-        </p>
+        </>
       )}
-    </main>
+    </div>
   );
 }
