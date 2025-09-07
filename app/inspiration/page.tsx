@@ -1,54 +1,78 @@
-// app/inspiration/page.tsx
 "use client";
-import { useMemo, useState } from "react";
-import Tabs from "@/components/Tabs";
-import PromptGrid, { type Prompt } from "@/components/PromptGrid";
+
+import { useEffect, useState, useCallback } from "react";
+import { Tabs } from "@/components/Tabs";
+import InfiniteFeed from "@/components/InfiniteFeed";
 import GeneratePrompt from "@/components/GeneratePrompt";
-import { SEED_FEED } from "@/lib/feed";
+import type { Prompt } from "@/components/PromptGrid";
+import { readMine, writeMine } from "@/lib/storage";
+import { loadFeedPage } from "@/lib/feed";
 
 export default function InspirationPage() {
   const [tab, setTab] = useState<"all" | "mine">("all");
   const [mine, setMine] = useState<Prompt[]>([]);
 
-  const sortedMine = useMemo(() => {
-    const favs = mine
-      .filter((p) => p.favorite)
-      .slice()
-      .sort((a, b) => a.title.localeCompare(b.title));
-    const rest = mine
-      .filter((p) => !p.favorite)
-      .slice()
-      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-    return [...favs, ...rest];
-  }, [mine]);
+  // hydrate mine from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setMine(readMine());
+    }
+  }, []);
+
+  // save to localStorage
+  const handleSave = useCallback((p: Prompt) => {
+    const updated = writeMine(p);
+    setMine(updated);
+  }, []);
+
+  const handleToggleFavorite = useCallback((p: Prompt) => {
+    const updated = writeMine({ ...p, favorite: !p.favorite });
+    setMine(updated);
+  }, []);
+
+  const handleCopy = useCallback(async (p: Prompt) => {
+    await navigator.clipboard.writeText(p.promptText);
+    console.log("Copied prompt:", p.promptText);
+  }, []);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <GeneratePrompt onSaved={(p) => setMine((m) => [p, ...m])} />
+      {/* Page header */}
+      <h1 className="mb-6 text-3xl font-bold">Inspiration</h1>
 
-      <h1 className="mt-10 text-2xl font-bold">Inspiration</h1>
+      {/* Generate From Image / Notes */}
+      <GeneratePrompt onSaved={handleSave} />
+
+      <Tabs
+        tabs={[
+          { id: "all", label: "All" },
+          { id: "mine", label: "Prompt Library" },
+        ]}
+        value={tab}
+        onChange={(v) => setTab(v as "all" | "mine")}
+      />
 
       <div className="mt-6">
-        <Tabs
-          tabs={[
-            { value: "all", label: "All" },
-            { value: "mine", label: "Prompt Library" },
-          ]}
-          value={tab}
-          onChange={(v) => setTab(v as "all" | "mine")}
-        />
-
-        <div className="mt-6">
-          {tab === "all" ? (
-            <PromptGrid items={SEED_FEED} />
-          ) : sortedMine.length ? (
-            <PromptGrid items={sortedMine} />
-          ) : (
-            <p className="py-10 text-center text-neutral-500">
-              Nothing saved yet. Go to <b>Inspiration</b> and use <b>Save</b> on any card to add it here.
-            </p>
-          )}
-        </div>
+        {tab === "all" ? (
+          <InfiniteFeed
+            loadPage={loadFeedPage}
+            onCopy={handleCopy}
+            onSave={handleSave}
+            onToggleFavorite={handleToggleFavorite}
+          />
+        ) : mine.length ? (
+          <InfiniteFeed
+            loadPage={async () => ({ items: mine, nextCursor: null })}
+            onCopy={handleCopy}
+            onSave={handleSave}
+            onToggleFavorite={handleToggleFavorite}
+          />
+        ) : (
+          <p className="py-10 text-center text-neutral-500">
+            Nothing saved yet. Go to <b>Inspiration</b> and use <b>Save</b> on any
+            card.
+          </p>
+        )}
       </div>
     </main>
   );
