@@ -1,5 +1,5 @@
 import PromptCard from './PromptCard';
-import { Prompt } from '@/app/types';
+import { Prompt } from '@/app/types'; // <— only source of the type
 
 type PromptGridProps = {
   prompts: Prompt[];
