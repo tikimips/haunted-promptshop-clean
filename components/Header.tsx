@@ -2,34 +2,48 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function Header() {
-  const pathname = usePathname();
-  const link = (href: string, label: string) => {
-    const active = pathname === href;
-    return (
-      <Link
-        key={href}
-        href={href}
-        className={`px-3 py-1 rounded-full text-sm ${
-          active ? "bg-black text-white" : "text-neutral-700 hover:bg-neutral-100"
-        }`}
-      >
-        {label}
-      </Link>
-    );
-  };
+  const { data: session, status } = useSession();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/90 backdrop-blur">
+    <header className="w-full border-b border-neutral-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="/" className="font-semibold">
-          Haunted Promptshop
+        <Link href="/" className="text-lg font-semibold">
+          Promptshop
         </Link>
-        <nav className="flex items-center gap-2">
-          {link("/inspiration", "Inspiration")}
-          {link("/library", "Prompt Library")}
+
+        <nav className="flex items-center gap-4">
+          <Link href="/inspiration" className="text-sm text-neutral-700 hover:underline">
+            Inspiration
+          </Link>
+          <Link href="/library" className="text-sm text-neutral-700 hover:underline">
+            Library
+          </Link>
+
+          {status === "loading" ? (
+            <span className="text-sm text-neutral-500">…</span>
+          ) : session?.user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-neutral-700">
+                {session.user.name ?? "Signed in"}
+              </span>
+              <button
+                onClick={() => signOut()}
+                className="rounded-md bg-neutral-900 px-3 py-1 text-sm text-white hover:bg-neutral-800"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => signIn("google")}
+              className="rounded-md bg-neutral-900 px-3 py-1 text-sm text-white hover:bg-neutral-800"
+            >
+              Continue with Google
+            </button>
+          )}
         </nav>
       </div>
     </header>
