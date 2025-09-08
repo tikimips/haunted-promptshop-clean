@@ -5,13 +5,15 @@ import { useState, useEffect } from 'react';
 export default function Home() {
   const [prompts, setPrompts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
 
   const loadContent = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/design-shots');
+      const response = await fetch(`/api/design-shots?page=${page}`);
       const data = await response.json();
       setPrompts(prev => [...prev, ...data]);
+      setPage(prev => prev + 1);
     } catch (error) {
       console.error('Error:', error);
     }
