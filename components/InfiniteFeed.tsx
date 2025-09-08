@@ -1,55 +1,100 @@
 "use client";
 
-import { useMemo } from "react";
-import toast from "react-hot-toast";
-import { Heart, HeartOff, Copy } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import PromptGrid from "./PromptGrid";
 import type { Prompt } from "@/app/types";
 
 type Props = {
-  items: Prompt[];
+  /** Loader that returns the next page of feed items */
+  loadPage: (page: number) => Promise<Prompt[]>;
+  /** Copy handler receives the prompt text */
   onCopy?: (text: string) => void;
+  /** Save handler receives the full Prompt */
   onSave?: (p: Prompt) => void;
+  /** Favorite toggle handler receives the full Prompt */
   onToggleFavorite?: (p: Prompt) => void;
 };
 
-export default function PromptGrid({ items, onCopy, onSave, onToggleFavorite }: Props) {
-  const cols = useMemo(() => "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4", []);
+export default function InfiniteFeed({
+  loadPage,
+  onCopy,
+  onSave,
+  onToggleFavorite,
+}: Props) {
+  const [items, setItems] = useState<Prompt[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
-  function copy(text: string) {
-    navigator.clipboard.writeText(text);
-    onCopy?.(text);
-    toast.success("Prompt copied");
-  }
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Load first page on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const first = await loadPage(1);
+        if (!cancelled) {
+          setItems(first);
+          setDone(first.length === 0);
+          setPage(2);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadPage]);
+
+  // Intersection Observer to trigger more loads
+  useEffect(() => {
+    if (!sentinelRef.current || done || loading) return;
+
+    observerRef.current?.disconnect();
+    observerRef.current = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry.isIntersecting && !loading && !done) {
+        void loadMore();
+      }
+    });
+
+    observerRef.current.observe(sentinelRef.current);
+
+    return () => observerRef.current?.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentinelRef.current, done, loading, page]);
+
+  const loadMore = async () => {
+    if (loading || done) return;
+    setLoading(true);
+    try {
+      const next = await loadPage(page);
+      setItems((prev) => [...prev, ...next]);
+      if (next.length === 0) {
+        setDone(true);
+      } else {
+        setPage((p) => p + 1);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className={cols}>
-      {items.map((p) => (
-        <article key={p.id} className="rounded-xl border overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={p.imageUrl} alt="" className="h-48 w-full object-cover" />
-          <div className="p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium line-clamp-1">{p.title}</h3>
-              <button
-                className="p-1 rounded hover:bg-neutral-100"
-                onClick={() => (onToggleFavorite ? onToggleFavorite(p) : undefined)}
-                title={p.favorite ? "Unfavorite" : "Favorite"}
-              >
-                {p.favorite ? <Heart className="size-4 fill-red-500 text-red-500" /> : <HeartOff className="size-4" />}
-              </button>
-            </div>
-            <p className="text-sm text-neutral-600 line-clamp-2">{p.description}</p>
-            <div className="flex gap-2">
-              <button className="rounded border px-2 py-1 text-sm" onClick={() => copy(p.promptText)}>
-                <span className="inline-flex items-center gap-1"><Copy className="size-3" /> Copy</span>
-              </button>
-              <button className="rounded border px-2 py-1 text-sm" onClick={() => onSave?.(p)}>
-                Save
-              </button>
-            </div>
-          </div>
-        </article>
-      ))}
-    </div>
+    <>
+      <PromptGrid
+        items={items}
+        onCopy={onCopy}
+        onSave={onSave}
+        onToggleFavorite={onToggleFavorite}
+      />
+      <div ref={sentinelRef} className="py-6 text-center text-sm text-neutral-500">
+        {done ? "— End —" : loading ? "Loading…" : "Scroll to load more"}
+      </div>
+    </>
   );
 }
