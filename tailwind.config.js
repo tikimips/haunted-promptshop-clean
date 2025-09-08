@@ -1,14 +1,7 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+import type { Config } from "tailwindcss";
+
+export default {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
-  theme: {
-    extend: {
-      colors: {
-        ink: { 900: "#0e0f12" },
-        spectral: { 500: "#6f63ff" }
-      },
-      borderRadius: { "xl2": "1rem" }
-    }
-  },
-  plugins: []
-};
+  theme: { extend: {} },
+  plugins: [],
+} satisfies Config;

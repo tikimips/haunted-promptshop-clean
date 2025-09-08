@@ -1,67 +1,36 @@
-'use client';
+// components/AuthButtons.tsx
+"use client";
 
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase-browser';
+import { signIn, signOut, useSession } from "next-auth/react";
 
 export default function AuthButtons() {
-  const [loading, setLoading] = useState(false);
+  const { data: session, status } = useSession();
 
-  const signInWithEmail = async () => {
-    const email = prompt('Enter your email to receive a sign-in link:');
-    if (!email) return;
+  if (status === "loading") {
+    return <span className="text-xs text-neutral-500">…</span>;
+  }
 
-    try {
-      setLoading(true);
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          // After the magic link, Supabase will return you here
-          emailRedirectTo: `${window.location.origin}`
-        }
-      });
-      if (error) throw error;
-      alert('Check your email for the magic link.');
-    } catch (e: any) {
-      alert(e.message || 'Error sending magic link');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signInWithGoogle = async () => {
-    try {
-      setLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}`
-        }
-      });
-      if (error) throw error;
-      // user will be redirected by Supabase
-    } catch (e: any) {
-      alert(e.message || 'Google sign-in failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!session) {
+    return (
+      <button
+        onClick={() => signIn("google")}
+        className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
+      >
+        Sign in
+      </button>
+    );
+  }
 
   return (
-    <div className="flex gap-3">
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-neutral-700">
+        {session.user?.name ?? session.user?.email}
+      </span>
       <button
-        onClick={signInWithEmail}
-        disabled={loading}
-        className="rounded-md border px-3 py-1 text-sm hover:bg-gray-50"
+        onClick={() => signOut()}
+        className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
       >
-        {loading ? 'Working…' : 'Sign in with Email'}
-      </button>
-
-      <button
-        onClick={signInWithGoogle}
-        disabled={loading}
-        className="rounded-md border px-3 py-1 text-sm hover:bg-gray-50"
-      >
-        {loading ? 'Working…' : 'Continue with Google'}
+        Sign out
       </button>
     </div>
   );

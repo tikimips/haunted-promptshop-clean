@@ -1,180 +1,81 @@
 // components/GeneratePrompt.tsx
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { Loader2, ImageIcon, Camera } from "lucide-react";
 import toast from "react-hot-toast";
-import type { Prompt } from "@/components/PromptGrid";
+import type { Prompt } from "@/app/types";
 
-type Props = {
-  /** Called after a prompt has been created and saved */
-  onSaved: (p: Prompt) => void;
-};
-
-const FALLBACK_IMG =
-  "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1600&auto=format&fit=crop";
+type Props = { onSaved?: (p: Prompt) => void };
 
 export default function GeneratePrompt({ onSaved }: Props) {
-  const [notes, setNotes] = useState("");
-  const [name, setName] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const previewUrl = useMemo(() => {
-    if (!file) return "";
-    try {
-      return URL.createObjectURL(file);
-    } catch {
-      return "";
-    }
-  }, [file]);
-
-  const onPick = () => inputRef.current?.click();
-
-  const onFile = (f: File | null) => {
-    if (!f) return;
-    if (!/^image\//.test(f.type)) {
-      toast.error("Please choose an image file.");
-      return;
-    }
-    setFile(f);
-  };
-
-  const doGenerate = useCallback(async () => {
-    if (busy) return;
+  async function onGenerate() {
+    if (!file) return toast.error("Choose an image first.");
     setBusy(true);
-
-    const dismiss = toast.loading("Generating…");
-
     try {
-      // Try your API route if present; otherwise fall back to a local composition
-      let generatedPrompt = "";
-
-      try {
-        const body = new FormData();
-        if (notes) body.append("notes", notes);
-        if (file) body.append("image", file);
-
-        const res = await fetch("/api/generate-prompt", {
-          method: "POST",
-          body,
-        });
-
-        if (res.ok) {
-          const data = (await res.json()) as { prompt?: string };
-          generatedPrompt = (data?.prompt || "").trim();
-        }
-      } catch {
-        // ignore network/route errors; we'll fall back
-      }
-
-      if (!generatedPrompt) {
-        // Fallback composition so the UI still works even if API is not present
-        generatedPrompt =
-          notes?.trim() ||
-          "Describe the scene and visual style. Use specific nouns, verbs, materials, and lighting. Keep it concise.";
-      }
-
-      const now = new Date().toISOString();
-      const promptObj: Prompt = {
-        id: `gen-${now}`,
-        title: name?.trim() || "Untitled prompt",
-        author: "You",
-        imageUrl: previewUrl || FALLBACK_IMG,
-        description: notes?.trim() || "Generated prompt",
-        favorite: false,
-        createdAt: now,
-        prompt: generatedPrompt,
-      };
-
-      // Persist in localStorage (Prompt Library)
-      try {
-        const key = "promptshop:mine";
-        const raw = localStorage.getItem(key);
-        const list = raw ? (JSON.parse(raw) as Prompt[]) : [];
-        localStorage.setItem(key, JSON.stringify([promptObj, ...list]));
-      } catch {
-        // ignore storage errors
-      }
-
-      onSaved(promptObj);
-
-      toast.success("Saved to Prompt Library", { id: dismiss });
-      setNotes("");
-      setName("");
-      setFile(null);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to generate prompt.", { id: dismiss });
+      const fd = new FormData();
+      fd.append("image", file);
+      fd.append("name", name || "Untitled");
+      const res = await fetch("/api/generate-prompt", { method: "POST", body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      const p: Prompt = await res.json();
+      onSaved?.(p);
+      toast.success("Saved to your library.");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate.");
     } finally {
       setBusy(false);
     }
-  }, [busy, file, name, notes, onSaved, previewUrl]);
+  }
 
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-4 sm:p-6 shadow-sm">
-      <h2 className="font-medium">+ Generate Prompt</h2>
-      <p className="mt-1 text-sm text-neutral-600">
-        Add notes (or paste text). Optionally include an image. Give it a name,
-        then click <b>Generate Prompt</b>. We’ll analyze it (or compose from
-        notes) and save it to your Prompt Library.
+    <section className="mb-6 rounded-2xl border bg-white p-4">
+      <h2 className="mb-2 text-sm font-semibold">Generate Prompt</h2>
+      <p className="mb-3 text-xs text-neutral-500">
+        Drag & drop an image or choose a file, give it a name, then click Generate Prompt.
       </p>
 
-      {/* uploader + name */}
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[1fr,16rem]">
-        <div>
-          <div
-            className="flex min-h-[160px] cursor-pointer items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-3 text-neutral-500"
-            onClick={onPick}
-            role="button"
-            aria-label="Pick an image"
-          >
-            {previewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="max-h-40 w-full rounded-md object-contain"
-              />
-            ) : (
-              <span>Drag & drop or click to add an image</span>
-            )}
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name your prompt"
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-          />
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="flex items-center gap-2">
           <button
-            disabled={busy}
-            onClick={doGenerate}
-            className="rounded-md bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-50"
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
           >
-            {busy ? "Generating…" : "Generate Prompt"}
+            <ImageIcon className="mr-2 inline h-4 w-4" />
+            Choose image
           </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+          <span className="text-xs text-neutral-600">{file?.name ?? "JPG, PNG, GIF, SVG, TIFF"}</span>
         </div>
-      </div>
 
-      {/* notes */}
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="e.g. sleek dashboard UI, glassmorphism, soft shadows, minimalist color, editorial layout…"
-        className="mt-4 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-        rows={4}
-      />
+        <input
+          className="flex-1 rounded-md border px-3 py-1.5 text-sm"
+          placeholder="Name this prompt (e.g., 'Isometric dashboard')"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <button
+          onClick={onGenerate}
+          disabled={busy}
+          className="inline-flex items-center justify-center rounded-md bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+        >
+          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+          Generate Prompt
+        </button>
+      </div>
     </section>
   );
 }

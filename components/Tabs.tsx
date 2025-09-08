@@ -1,33 +1,30 @@
 // components/Tabs.tsx
 "use client";
+import clsx from "clsx";
 
-type Tab = { id: string; label: string };
+export type Tab = { value: "all" | "mine"; label: string };
 
 type Props = {
   tabs: Tab[];
-  value: string;
-  onChange: (id: string) => void;
+  value: Tab["value"];
+  onChange: (value: Tab["value"]) => void;
 };
 
 export default function Tabs({ tabs, value, onChange }: Props) {
   return (
-    <div className="flex gap-2">
-      {tabs.map((t) => {
-        const active = t.id === value;
-        return (
-          <button
-            key={t.id}
-            onClick={() => onChange(t.id)}
-            className={`rounded-full border px-3 py-1 text-sm ${
-              active
-                ? "border-black bg-black text-white"
-                : "border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50"
-            }`}
-          >
-            {t.label}
-          </button>
-        );
-      })}
+    <div className="mt-6 flex gap-2">
+      {tabs.map((t) => (
+        <button
+          key={t.value}
+          className={clsx(
+            "rounded-full px-4 py-1.5 text-sm",
+            value === t.value ? "bg-black text-white" : "bg-neutral-100 hover:bg-neutral-200"
+          )}
+          onClick={() => onChange(t.value)}
+        >
+          {t.label}
+        </button>
+      ))}
     </div>
   );
 }

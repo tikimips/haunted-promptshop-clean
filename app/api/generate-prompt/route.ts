@@ -1,72 +1,99 @@
 // app/api/generate-prompt/route.ts
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-export const runtime = "nodejs"; // we need the Node runtime (not edge) for file handling
-
-function toBase64(buf: ArrayBuffer) {
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return Buffer.from(binary, "binary").toString("base64");
+async function fileToBase64(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  const base64 = buffer.toString('base64');
+  return base64;
 }
 
 export async function POST(req: Request) {
   try {
+    // Test mode - set this to true to avoid API calls
+    const TEST_MODE = process.env.TEST_MODE === 'true' || process.env.NODE_ENV === 'development';
+    
+    console.log("API Key exists:", !!process.env.ANTHROPIC_API_KEY);
+    console.log("Test mode:", TEST_MODE);
+    
     const form = await req.formData();
-    const file = form.get("file") as File | null;
-    const name = (form.get("name") as string | null) || "Untitled";
+    const name = (form.get("name") as string) || "Untitled";
+    const image = form.get("image") as File | null;
 
-    if (!file || file.size === 0) {
-      return NextResponse.json({ error: "No image file received." }, { status: 400 });
+    console.log("Form data:", { name, hasImage: !!image });
+
+    if (!image) {
+      return new NextResponse("No image provided", { status: 400 });
     }
 
-    // Convert uploaded file to a data URL
-    const mime = file.type || "image/png";
-    const b64 = toBase64(await file.arrayBuffer());
-    const dataUrl = `data:${mime};base64,${b64}`;
+    const base64Data = await fileToBase64(image);
+    const now = new Date().toISOString();
 
-    // If there's no key (or on preview envs), return a graceful local prompt
-    const key = process.env.OPENAI_API_KEY;
-    if (!key) {
-      const prompt =
-        `(${name}) — A clear, single-sentence generative prompt describing the uploaded image’s subject, style, colors, lighting, and composition.`;
-      return NextResponse.json({ prompt, name }, { status: 200 });
+    // Test mode - return mock data without API call
+    if (TEST_MODE) {
+      console.log("Using test mode - returning mock data");
+      return NextResponse.json({
+        id: crypto.randomUUID(),
+        title: name,
+        author: "Test Generated",
+        description: "Test prompt generated without API call.",
+        imageUrl: `data:${image.type};base64,${base64Data}`,
+        promptText: "Create a modern, minimalist dashboard design with clean typography, subtle shadows, and a professional color palette featuring blues and grays.",
+        favorite: false,
+        createdAt: now,
+      });
     }
 
-    const openai = new OpenAI({ apiKey: key });
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return new NextResponse("Anthropic API key not configured", { status: 500 });
+    }
 
-    // Use GPT-4o-mini with image input (chat.completions style for broad compat)
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.7,
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    console.log("Base64 created, length:", base64Data.length);
+
+    const response = await anthropic.messages.create({
+      model: "claude-3-haiku-20240307",
+      max_tokens: 200,
       messages: [
         {
           role: "user",
           content: [
             {
               type: "text",
-              text:
-                "You are a prompt-writer for an AI art app. " +
-                "Analyze this image and produce ONE concise, high-quality prompt that recreates it. " +
-                "Include subject, scene details, art style, materials, camera/lighting if relevant, " +
-                "and a short color palette. No preambles, no quotes."
+              text: "Analyze this image and produce a clean, reusable prompt for a generative AI UI. Return only the prompt text (no quotes, no bullets, no preamble). The prompt should be specific and self-contained."
             },
-            { type: "image_url", image_url: { url: dataUrl } }
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: image.type as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+                data: base64Data
+              }
+            }
           ]
         }
       ]
     });
 
-    const prompt =
-      completion.choices?.[0]?.message?.content?.trim() ||
-      "Elegant, cinematic prompt describing the image (fallback).";
-    return NextResponse.json({ prompt, name }, { status: 200 });
+    const promptText = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '';
+    if (!promptText) throw new Error("Model returned empty content.");
+
+    return NextResponse.json({
+      id: crypto.randomUUID(),
+      title: name,
+      author: "AI Generated",
+      description: "Generated by Claude from your image.",
+      imageUrl: `data:${image.type};base64,${base64Data}`,
+      promptText: promptText,
+      favorite: false,
+      createdAt: now,
+    });
   } catch (err: any) {
-    console.error("generate-prompt error:", err?.message || err);
-    return NextResponse.json(
-      { error: "Failed to generate prompt. Please try again." },
-      { status: 500 }
-    );
+    console.error("Claude API Error:", err);
+    return new NextResponse(err?.message || "Failed to generate", { status: 500 });
   }
 }
