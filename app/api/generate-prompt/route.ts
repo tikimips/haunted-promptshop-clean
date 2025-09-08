@@ -2,16 +2,11 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-// Remove edge runtime to use Node.js runtime instead
-// export const runtime = "edge";
-
-function toDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.onload = () => resolve(reader.result as string);
-    reader.readAsDataURL(file);
-  });
+async function fileToBase64(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  const base64 = buffer.toString('base64');
+  return `data:${file.type};base64,${base64}`;
 }
 
 export async function POST(req: Request) {
