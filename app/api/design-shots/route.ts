@@ -1,57 +1,53 @@
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get('page') || '1');
+  
   try {
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    
     if (!process.env.FREEPIK_API_KEY) {
       console.log('No Freepik API key, using placeholders');
-      // Keep the working placeholder code as fallback
-      return createPlaceholderContent(page);
+      return NextResponse.json(createPlaceholderContent(page));
     }
 
     // Try Freepik API
-    try {
-      const searchTerms = ['logo', 'icon', 'illustration', 'vector', 'design', 'graphic'];
-      const term = searchTerms[(page - 1) % searchTerms.length];
-      
-      const response = await fetch(`https://api.freepik.com/v1/resources?query=${term}&limit=12&page=${page}`, {
-        headers: {
-          'X-Freepik-API-Key': process.env.FREEPIK_API_KEY,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.data && data.data.length > 0) {
-          const designContent = data.data.map((item: any, i: number) => ({
-            id: `freepik_${item.id}`,
-            title: item.title || `${term} Design`,
-            description: item.description || `Professional ${term} from Freepik`,
-            imageUrl: item.image?.source?.url || item.thumbnails?.medium?.url || item.preview?.url,
-            author: item.author?.name || 'Freepik',
-            likes: Math.floor(Math.random() * 500) + 100,
-            downloads: Math.floor(Math.random() * 200) + 50,
-            format: 'Professional',
-            category: term,
-            source: 'Freepik'
-          }));
-          
-          return NextResponse.json(designContent);
-        }
+    const searchTerms = ['logo', 'icon', 'illustration', 'vector', 'design', 'graphic'];
+    const term = searchTerms[(page - 1) % searchTerms.length];
+    
+    const response = await fetch(`https://api.freepik.com/v1/resources?query=${term}&limit=12&page=${page}`, {
+      headers: {
+        'X-Freepik-API-Key': process.env.FREEPIK_API_KEY,
+        'Accept': 'application/json'
       }
-    } catch (freepikError) {
-      console.log('Freepik API failed, using placeholders:', freepikError);
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data.data && data.data.length > 0) {
+        const designContent = data.data.map((item: any, i: number) => ({
+          id: `freepik_${item.id}`,
+          title: item.title || `${term} Design`,
+          description: item.description || `Professional ${term} from Freepik`,
+          imageUrl: item.image?.source?.url || item.thumbnails?.medium?.url || item.preview?.url,
+          author: item.author?.name || 'Freepik',
+          likes: Math.floor(Math.random() * 500) + 100,
+          downloads: Math.floor(Math.random() * 200) + 50,
+          format: 'Professional',
+          category: term,
+          source: 'Freepik'
+        }));
+        
+        return NextResponse.json(designContent);
+      }
     }
 
-    // Fallback to placeholders if Freepik fails
-    return createPlaceholderContent(page);
+    // Fallback if Freepik fails
+    console.log('Freepik API failed, using placeholders');
+    return NextResponse.json(createPlaceholderContent(page));
   } catch (error) {
     console.error('API error:', error);
-    return createPlaceholderContent(page);
+    return NextResponse.json(createPlaceholderContent(page));
   }
 }
 
@@ -83,5 +79,5 @@ function createPlaceholderContent(page: number) {
     };
   });
 
-  return NextResponse.json(designContent);
+  return designContent;
 }
