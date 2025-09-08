@@ -1,0 +1,50 @@
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request) {
+  try {
+    const { image } = await request.json();
+    
+    // Extract the base64 data (remove data:image/jpeg;base64, prefix)
+    const base64Data = image.split(',')[1];
+    
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-sonnet-20240229',
+        max_tokens: 300,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: 'image/jpeg',
+                  data: base64Data
+                }
+              },
+              {
+                type: 'text',
+                text: 'Analyze this image and generate a detailed prompt that could be used to recreate it with AI image generation tools like DALL-E, Midjourney, or Stable Diffusion. Focus on style, composition, colors, mood, and key visual elements. Be specific but concise.'
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const data = await response.json();
+    const prompt = data.content?.[0]?.text || 'Unable to analyze image';
+
+    return NextResponse.json({ prompt });
+  } catch (error) {
+    console.error('Error analyzing image:', error);
+    return NextResponse.json({ prompt: 'Error analyzing image' }, { status: 500 });
+  }
+}

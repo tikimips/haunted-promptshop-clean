@@ -28,19 +28,52 @@ export default function Home() {
     localStorage.setItem('promptshop-images', JSON.stringify(images));
   }, [images]);
 
-  const handleImageUpload = async (file: File, prompt: string) => {
+  const handleImageUpload = async (file: File) => {
     // Create URL for the uploaded file
     const imageUrl = URL.createObjectURL(file);
+    
+    // Convert file to base64 for API
+    const base64 = await fileToBase64(file);
+    
+    // Analyze image with Claude
+    const generatedPrompt = await analyzeImage(base64);
     
     const newImage: UploadedImage = {
       id: Date.now().toString(),
       url: imageUrl,
-      prompt: prompt,
+      prompt: generatedPrompt,
       uploadedAt: new Date().toISOString(),
       isFavorite: false
     };
 
     setImages(prev => [newImage, ...prev]); // Add to beginning (most recent first)
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const analyzeImage = async (base64Image: string): Promise<string> => {
+    try {
+      const response = await fetch('/api/analyze-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ image: base64Image }),
+      });
+
+      const data = await response.json();
+      return data.prompt || 'Unable to generate prompt for this image';
+    } catch (error) {
+      console.error('Error analyzing image:', error);
+      return 'Error analyzing image';
+    }
   };
 
   const toggleFavorite = (imageId: string) => {
@@ -178,14 +211,15 @@ export default function Home() {
 }
 
 // Upload Component
-function UploadComponent({ onImageUpload }: { onImageUpload: (file: File, prompt: string) => void }) {
-  const [prompt, setPrompt] = useState('');
+function UploadComponent({ onImageUpload }: { onImageUpload: (file: File) => void }) {
   const [dragActive, setDragActive] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     if (file && file.type.startsWith('image/')) {
-      onImageUpload(file, prompt);
-      setPrompt(''); // Clear prompt after upload
+      setIsAnalyzing(true);
+      await onImageUpload(file);
+      setIsAnalyzing(false);
     }
   };
 
@@ -203,19 +237,6 @@ function UploadComponent({ onImageUpload }: { onImageUpload: (file: File, prompt
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Prompt (optional)
-        </label>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter the prompt used to generate this image..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-          rows={3}
-        />
-      </div>
-
       <div
         className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
           dragActive
@@ -235,11 +256,22 @@ function UploadComponent({ onImageUpload }: { onImageUpload: (file: File, prompt
           onChange={handleFileInput}
           className="hidden"
           id="file-upload"
+          disabled={isAnalyzing}
         />
-        <label htmlFor="file-upload" className="cursor-pointer">
+        <label htmlFor="file-upload" className={`cursor-pointer ${isAnalyzing ? 'pointer-events-none' : ''}`}>
           <div className="text-gray-600">
-            <p className="text-lg font-medium">Drop an image here or click to upload</p>
-            <p className="text-sm text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
+            {isAnalyzing ? (
+              <>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                <p className="text-lg font-medium">Analyzing image and generating prompt...</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-medium">Drop an image here or click to upload</p>
+                <p className="text-sm text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
+                <p className="text-xs text-gray-400 mt-2">Claude will analyze your image and generate a prompt automatically</p>
+              </>
+            )}
           </div>
         </label>
       </div>
