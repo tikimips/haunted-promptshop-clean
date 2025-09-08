@@ -1,5 +1,5 @@
 // lib/storage.ts
-import type { Prompt } from "@/components/PromptGrid";
+import type { Prompt } from "@/app/types";
 
 const KEY = "promptshop:mine";
 
