@@ -2,26 +2,6 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Combine multiple sources for illustrations and graphics
-    const illustrationSources = [
-      {
-        source: 'undraw',
-        baseUrl: 'https://undraw.co/api/illustrations',
-        type: 'vector illustration'
-      },
-      {
-        source: 'pixabay',
-        baseUrl: 'https://pixabay.com/api/?key=YOUR_KEY&category=illustration&image_type=vector',
-        type: 'vector graphics'
-      },
-      {
-        source: 'placeholder',
-        baseUrl: 'https://picsum.photos/400/300',
-        type: 'design mockup'
-      }
-    ];
-
-    // Generate mixed content focusing on actual design work
     const designContent = Array.from({ length: 12 }, (_, i) => {
       const designTypes = [
         { category: 'Logo Design', description: 'Professional logo concepts and brand identity elements' },
@@ -34,7 +14,6 @@ export async function GET() {
 
       const designType = designTypes[i % designTypes.length];
       
-      // Use different image sources for variety
       const imageUrls = [
         `https://source.unsplash.com/600x400/?design,${designType.category.toLowerCase().replace(' ', '-')}&sig=${Date.now() + i}`,
         `https://picsum.photos/600/400?random=${Date.now() + i}`,
@@ -42,4 +21,21 @@ export async function GET() {
       ];
 
       return {
-        id: `design_${Date.no
+        id: `design_${Date.now()}_${i}`,
+        title: `${designType.category} Inspiration`,
+        imageUrl: imageUrls[i % imageUrls.length],
+        author: `Design Studio ${Math.floor(Math.random() * 50) + 1}`,
+        likes: Math.floor(Math.random() * 600) + 100,
+        views: Math.floor(Math.random() * 3000) + 500,
+        tags: [designType.category, 'Professional', 'Creative'],
+        created_at: new Date(Date.now() - Math.random() * 20 * 24 * 60 * 60 * 1000).toISOString(),
+        description: designType.description
+      };
+    });
+    
+    return NextResponse.json(designContent);
+  } catch (error) {
+    console.error('Design API error:', error);
+    return NextResponse.json([], { status: 500 });
+  }
+}
