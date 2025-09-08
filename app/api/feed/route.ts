@@ -1,29 +1,29 @@
+// app/api/feed/route.ts
 import { NextResponse } from "next/server";
-import type { Prompt } from "@/app/types";
+import type { Prompt } from "@/components/PromptGrid";
 
 export const runtime = "edge";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-  const perPage = 15;
+  const perPage = 12;
 
   const items: Prompt[] = Array.from({ length: perPage }).map((_, i) => {
-    const idNum = (page - 1) * perPage + i + 1;
+    const n = (page - 1) * perPage + (i + 1);
     return {
-      id: `${idNum}`,
-      title: `Inspo #${idNum}`,
-      author: "Curator",
-      description: "Sample inspiration card with a nice visual.",
-      imageUrl: `https://picsum.photos/seed/${idNum}/1200/800`,
-      promptText:
-        "ultra-detailed cinematic photo, shallow depth of field, soft rim light, high contrast, 35mm, masterpiece",
+      id: `demo-${n}`,
+      title: ["Isometric dashboard", "Flat icon set", "Minimal landing hero"][n % 3],
+      description:
+        ["Generate UI copy for a sleek isometric dashboard.",
+         "Create 24 flat icons for a productivity app.",
+         "Bold headline and CTA for a minimalist hero."][n % 3],
+      imageUrl: `https://picsum.photos/seed/prompt-${n}/800/600`,
+      prompt: `Write a prompt ${n} that describes ${["an isometric dashboard","a flat icon set","a minimal landing hero"][n%3]}.`,
       favorite: false,
-      createdAt: new Date(Date.now() - idNum * 60_000).toISOString(),
+      createdAt: new Date(Date.now() - n * 6e5).toISOString(),
     };
   });
 
-  // Simulate end at page 6
-  if (page > 6) return NextResponse.json([], { status: 200 });
-  return NextResponse.json(items, { status: 200 });
+  return NextResponse.json({ items });
 }

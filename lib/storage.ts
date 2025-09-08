@@ -1,28 +1,38 @@
-"use client";
-import type { Prompt } from "@/app/types";
+// lib/storage.ts
+import type { Prompt } from "@/components/PromptGrid";
 
-const KEY = "promptshop.mine.v1";
+const KEY = "promptshop:mine";
 
-export function readMine(): Prompt[] {
+function read(): Prompt[] {
   if (typeof window === "undefined") return [];
   try {
-    const s = localStorage.getItem(KEY);
-    return s ? (JSON.parse(s) as Prompt[]) : [];
-  } catch { return []; }
+    const raw = localStorage.getItem(KEY);
+    return raw ? (JSON.parse(raw) as Prompt[]) : [];
+  } catch {
+    return [];
+  }
 }
 
-export function writeMine(newItem: Prompt): Prompt[] {
-  const all = readMine();
-  const idx = all.findIndex(x => x.id === newItem.id);
-  if (idx >= 0) all[idx] = newItem; else all.unshift(newItem);
-  localStorage.setItem(KEY, JSON.stringify(all));
-  return all;
+function write(items: Prompt[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(KEY, JSON.stringify(items));
+}
+
+export function readMine(): Prompt[] {
+  return read();
+}
+
+export function writeMine(p: Prompt): Prompt[] {
+  const curr = read();
+  const exists = curr.find((x) => x.id === p.id);
+  const next = exists ? curr : [{ ...p }, ...curr];
+  write(next);
+  return next;
 }
 
 export function toggleFavorite(id: string): Prompt[] {
-  const all = readMine();
-  const i = all.findIndex(p => p.id === id);
-  if (i >= 0) all[i].favorite = !all[i].favorite;
-  localStorage.setItem(KEY, JSON.stringify(all));
-  return all;
+  const curr = read();
+  const next = curr.map((p) => (p.id === id ? { ...p, favorite: !p.favorite } : p));
+  write(next);
+  return next;
 }

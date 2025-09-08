@@ -1,142 +1,80 @@
+// components/GeneratePrompt.tsx
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { ImageIcon, Camera, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Loader2, ImageIcon, Camera } from "lucide-react";
 import toast from "react-hot-toast";
-import type { Prompt } from "@/app/types";
+import type { Prompt } from "./PromptGrid";
 
-type Props = {
-  onSaved?: (p: Prompt) => void;
-};
+type Props = { onSaved?: (p: Prompt) => void };
 
 export default function GeneratePrompt({ onSaved }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [preview, setPreview] = useState<string>("");
-
-  const disabled = useMemo(() => !file || !title || busy, [file, title, busy]);
-
-  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-  }
 
   async function onGenerate() {
+    if (!file) return toast.error("Choose an image first.");
+    setBusy(true);
     try {
-      setBusy(true);
       const fd = new FormData();
-      if (file) fd.append("image", file);
-      fd.append("title", title);
-      fd.append("notes", notes);
-
+      fd.append("image", file);
+      fd.append("name", name || "Untitled");
       const res = await fetch("/api/generate-prompt", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to generate");
-
-      const promptText: string = data.promptText;
-
-      const newItem: Prompt = {
-        id: crypto.randomUUID(),
-        title,
-        author: "You",
-        description: "Generated from your image.",
-        imageUrl: preview,
-        promptText,
-        favorite: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      // local save
-      const prev = JSON.parse(localStorage.getItem("mine") || "[]") as Prompt[];
-      const updated = [newItem, ...prev];
-      localStorage.setItem("mine", JSON.stringify(updated));
-      onSaved?.(newItem);
-
-      toast.success("Prompt saved to your Library");
-      setTitle("");
-      setNotes("");
-      setFile(null);
-      setPreview("");
+      if (!res.ok) throw new Error(await res.text());
+      const p: Prompt = await res.json();
+      onSaved?.(p);
+      toast.success("Saved to your library.");
     } catch (e: any) {
-      toast.error(e?.message || "Unable to generate prompt");
+      toast.error(e.message || "Failed to generate.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="rounded-2xl border p-4 sm:p-5">
-      <h2 className="text-lg font-semibold mb-3">Generate Prompt from Image</h2>
+    <section className="mb-6 rounded-2xl border bg-white p-4">
+      <h2 className="mb-2 text-sm font-semibold">Generate Prompt</h2>
+      <p className="mb-3 text-xs text-neutral-500">
+        Drag & drop an image or choose a file, give it a name, then click Generate Prompt.
+      </p>
 
-      <div className="grid gap-4 sm:grid-cols-[1fr,260px]">
-        <div className="space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
+          >
+            <ImageIcon className="mr-2 inline h-4 w-4" />
+            Choose image
+          </button>
           <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Name this prompt…"
-            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 ring-neutral-200"
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional notes to guide the prompt…"
-            rows={4}
-            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 ring-neutral-200"
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-neutral-50"
-              onClick={() => fileRef.current?.click()}
-            >
-              <ImageIcon className="size-4" />
-              Add image
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-neutral-50 sm:hidden"
-              onClick={() => fileRef.current?.click()}
-              aria-label="Use camera (mobile)"
-            >
-              <Camera className="size-4" />
-              Use camera
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={onPickFile}
-            />
-          </div>
-          <div>
-            <button
-              onClick={onGenerate}
-              disabled={disabled}
-              className="inline-flex items-center gap-2 rounded-md bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-              Generate Prompt
-            </button>
-          </div>
+          <span className="text-xs text-neutral-600">{file?.name ?? "JPG, PNG, GIF, SVG, TIFF"}</span>
         </div>
 
-        <div className="flex items-center justify-center">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="" className="max-h-48 rounded-lg border object-contain" />
-          ) : (
-            <div className="h-48 w-full rounded-lg border text-sm text-neutral-500 grid place-content-center">
-              Image preview
-            </div>
-          )}
-        </div>
+        <input
+          className="flex-1 rounded-md border px-3 py-1.5 text-sm"
+          placeholder="Name this prompt (e.g., “Isometric dashboard”)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <button
+          onClick={onGenerate}
+          disabled={busy}
+          className="inline-flex items-center justify-center rounded-md bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+        >
+          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+          Generate Prompt
+        </button>
       </div>
     </section>
   );

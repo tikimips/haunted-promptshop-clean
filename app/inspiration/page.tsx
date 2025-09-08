@@ -1,46 +1,50 @@
+// app/inspiration/page.tsx
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import GeneratePrompt from "@/components/GeneratePrompt";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import InfiniteFeed from "@/components/InfiniteFeed";
-import PromptGrid from "@/components/PromptGrid";
-import type { Prompt } from "@/app/types";
-import { readMine, writeMine } from "@/lib/storage";
+import PromptGrid, { type Prompt } from "@/components/PromptGrid";
+import GeneratePrompt from "@/components/GeneratePrompt";
+import { readMine, writeMine, toggleFavorite } from "@/lib/storage";
 import { loadFeedPage } from "@/lib/feed";
-import toast from "react-hot-toast";
 
-// We keep this as a client page to use state + toasts easily.
-// We also avoid SSG issues by forcing dynamic at route level in the server file (app/page.tsx).
+type Tab = "all" | "mine";
+
 export default function InspirationPage() {
+  const [tab, setTab] = useState<Tab>("all");
   const [mine, setMine] = useState<Prompt[]>([]);
-  const [tab, setTab] = useState<"all" | "mine">("all");
 
-  useEffect(() => {
-    setMine(readMine());
-  }, []);
+  useEffect(() => setMine(readMine()), []);
 
-  const handleCopy = useCallback((text: string) => {
-    navigator.clipboard.writeText(text).then(
-      () => toast.success("Prompt copied"),
-      () => toast.error("Copy failed")
+  const handleSave = useCallback((p: Prompt) => setMine(writeMine(p)), []);
+  const handleToggleFavorite = useCallback(
+    (p: Prompt) => setMine(toggleFavorite(p.id)),
+    []
+  );
+
+  const content =
+    tab === "all" ? (
+      <InfiniteFeed
+        loadPage={loadFeedPage}
+        onCopy={(txt) => navigator.clipboard.writeText(txt)}
+        onSave={handleSave}
+        onToggleFavorite={handleToggleFavorite}
+      />
+    ) : mine.length ? (
+      <PromptGrid items={mine} />
+    ) : (
+      <p className="py-10 text-center text-neutral-500">
+        Nothing saved yet. Generate something and hit <b>Save</b>.
+      </p>
     );
-  }, []);
-
-  const handleSave = useCallback((p: Prompt) => {
-    const updated = writeMine(p);
-    setMine(updated);
-    toast.success("Saved to library");
-  }, []);
-
-  const handleToggleFavorite = useCallback((p: Prompt) => {
-    const updated = writeMine({ ...p, favorite: !p.favorite });
-    setMine(updated);
-  }, []);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
-      {/* Tabs */}
-      <div className="mb-6 flex items-center gap-2">
+    <main>
+      <h1 className="mb-4 text-2xl font-bold">Inspiration</h1>
+
+      <GeneratePrompt onSaved={handleSave} />
+
+      <div className="mb-4 mt-6 flex items-center gap-2">
         <button
           className={`rounded-md border px-3 py-1.5 text-sm ${
             tab === "all" ? "bg-black text-white" : "hover:bg-neutral-50"
@@ -59,31 +63,7 @@ export default function InspirationPage() {
         </button>
       </div>
 
-      {/* Generator */}
-      <div className="mb-8">
-        <GeneratePrompt onSaved={handleSave} />
-      </div>
-
-      {/* Content */}
-      {tab === "all" ? (
-        <InfiniteFeed
-          loadPage={loadFeedPage}
-          onCopy={handleCopy}
-          onSave={handleSave}
-          onToggleFavorite={handleToggleFavorite}
-        />
-      ) : mine.length ? (
-        <PromptGrid
-          items={mine}
-          onCopy={handleCopy}
-          onSave={handleSave}
-          onToggleFavorite={handleToggleFavorite}
-        />
-      ) : (
-        <p className="py-10 text-center text-neutral-500">
-          Nothing saved yet. Generate or browse prompts and click <b>Save</b>.
-        </p>
-      )}
+      {content}
     </main>
   );
 }
