@@ -1,54 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Prompt } from '@/app/types';
-import { generateMockPrompts } from '@/app/lib/mockData';
-import { useInfiniteScroll } from '@/app/hooks/useInfiniteScroll';
-import PromptCard from '@/app/components/PromptCard';
-
-const PROMPTS_PER_PAGE = 12;
-
 export default function Home() {
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-
-  const { isFetching, setIsFetching, setTargetRef } = useInfiniteScroll({
-    threshold: 0.5,
-    rootMargin: '100px'
-  });
-
-  const loadMorePrompts = useCallback(async () => {
-    if (loading || !hasMore) return;
-    
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const newPrompts = generateMockPrompts(PROMPTS_PER_PAGE, (page - 1) * PROMPTS_PER_PAGE + 1);
-    
-    if (page >= 8) {
-      setHasMore(false);
-    }
-    
-    setPrompts(prev => [...prev, ...newPrompts]);
-    setPage(prev => prev + 1);
-    setLoading(false);
-    setIsFetching(false);
-  }, [page, loading, hasMore, setIsFetching]);
-
-  useEffect(() => {
-    if (prompts.length === 0) {
-      loadMorePrompts();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isFetching && !loading) {
-      loadMorePrompts();
-    }
-  }, [isFetching, loadMorePrompts, loading]);
-
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -61,24 +13,27 @@ export default function Home() {
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {prompts.map((prompt) => (
-            <PromptCard key={prompt.id} prompt={prompt} />
+          {Array.from({ length: 12 }, (_, i) => (
+            <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+              <img 
+                src={`https://picsum.photos/400/300?random=${i}`}
+                alt={`Prompt ${i + 1}`}
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-4">
+                <h3 className="font-semibold text-lg mb-2">Creative Design Prompt {i + 1}</h3>
+                <p className="text-gray-600 text-sm mb-3">Generate amazing designs with this prompt</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">by Designer {i + 1}</span>
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <span>♥ {Math.floor(Math.random() * 500)}</span>
+                    <span>↓ {Math.floor(Math.random() * 200)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
-        {loading && (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">Loading more prompts...</span>
-          </div>
-        )}
-        {hasMore && !loading && (
-          <div ref={setTargetRef} className="h-4 w-full" />
-        )}
-        {!hasMore && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">You've reached the end! 🎉</p>
-          </div>
-        )}
       </main>
     </div>
   );
