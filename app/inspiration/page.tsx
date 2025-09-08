@@ -3,7 +3,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import InfiniteFeed from "@/components/InfiniteFeed";
-import PromptGrid, { type Prompt } from "@/components/PromptGrid";
+import PromptGrid from "@/components/PromptGrid";
+import { type Prompt } from "@/app/types";
 import GeneratePrompt from "@/components/GeneratePrompt";
 import { readMine, writeMine, toggleFavorite } from "@/lib/storage";
 import { loadFeedPage } from "@/lib/feed";
