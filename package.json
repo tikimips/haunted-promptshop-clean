@@ -1,6 +1,6 @@
 {
   "name": "haunted-promptshop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,27 +9,21 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "react": "^18",
-    "react-dom": "^18",
-    "next": "14.2.5",
-    "next-auth": "^4.24.5",
-    "@supabase/supabase-js": "^2.44.4",
-    "@supabase/ssr": "^0.4.0",
-    "lucide-react": "^0.263.1",
-    "react-hot-toast": "^2.4.1",
-    "openai": "^4.52.7",
-    "clsx": "^2.1.1",
-    "@anthropic-ai/sdk": "^0.24.3"
-  },
-  "devDependencies": {
-    "typescript": "^5",
+    "@next/font": "14.2.5",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/supabase-js": "^2.43.4",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "autoprefixer": "^10.4.19",
+    "autoprefixer": "^10.0.1",
     "eslint": "^8",
-    "eslint-config-next": "14.2.5"
+    "eslint-config-next": "14.2.5",
+    "next": "14.2.5",
+    "next-auth": "^4.24.7",
+    "postcss": "^8",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwindcss": "^3.3.0",
+    "typescript": "^5"
   }
 }
