@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import { Heart, Copy, Save } from "lucide-react";
-import { type Prompt } from "./PromptGrid";
+import { type Prompt } from "@/app/types";
 
 type Props = {
   item: Prompt;
@@ -13,7 +13,7 @@ type Props = {
 };
 
 export default function PromptCard({ item, onCopy, onSave, onToggleFavorite }: Props) {
-  const text = item.prompt || item.promptText || "";
+  const text = item.promptText || "";
 
   return (
     <article className="rounded-2xl border bg-white p-3 shadow-sm">
