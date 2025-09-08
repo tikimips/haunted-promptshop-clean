@@ -2,7 +2,8 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-export const runtime = "edge";
+// Remove edge runtime to use Node.js runtime instead
+// export const runtime = "edge";
 
 function toDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
