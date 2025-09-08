@@ -13,7 +13,6 @@ interface DesignPrompt {
   tags: string[];
   source: 'design' | 'illustration';
   format?: string;
-  style?: string;
 }
 
 export default function Home() {
@@ -53,8 +52,7 @@ export default function Home() {
           downloads: item.downloads || Math.floor(item.likes * 0.4),
           tags: item.tags || ['Illustration'],
           source: 'illustration' as const,
-          format: item.format || 'SVG',
-          style: item.style
+          format: item.format || 'SVG'
         }))
       ];
 
@@ -103,34 +101,4 @@ export default function Home() {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {prompts.map((prompt) => (
-            <div key={prompt.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="relative">
-                <img 
-                  src={prompt.imageUrl} 
-                  alt={prompt.title}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="absolute top-2 right-2">
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    prompt.source === 'design' ? 'bg-blue-100 text-blue-800' :
-                    'bg-purple-100 text-purple-800'
-                  }`}>
-                    {prompt.source === 'design' ? 'Design' : 'Vector Art'}
-                  </span>
-                </div>
-                <div className="absolute top-2 left-2">
-                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                    {prompt.format}
-                  </span>
-                </div>
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-lg mb-2 line-clamp-2">{prompt.title}</h3>
-                <p className="text-gray-600 text-sm mb-3 line-clamp-3">{prompt.description}</p>
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {prompt.tags.slice(0, 2).map((tag, index) => (
-                    <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                      {tag}
-                    </span>
+        <div className="grid grid-cols-1 md:g

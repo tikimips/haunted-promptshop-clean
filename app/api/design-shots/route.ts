@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Generate actual design-focused content with illustration URLs
     const designContent = Array.from({ length: 12 }, (_, i) => {
       const designTypes = [
         { 
@@ -33,13 +32,4 @@ export async function GET() {
         { 
           category: 'Brand Graphics', 
           description: 'Complete visual identity and branding elements',
-          imageBase: 'https://via.placeholder.com/400x300/ef4444/ffffff?text=Brand+Graphics'
-        }
-      ];
-
-      const designType = designTypes[i % designTypes.length];
-      
-      return {
-        id: `design_${Date.now()}_${i}`,
-        title: `${designType.category} Collection`,
-        imageUrl:
+          imageBase: 'https://via.placeholder.com/400x300/ef4444/ffffff?text=Brand+Grap
