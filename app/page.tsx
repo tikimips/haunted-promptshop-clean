@@ -4,31 +4,42 @@ import { useState, useEffect } from 'react';
 
 export default function Home() {
   const [prompts, setPrompts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadMoreContent = async () => {
+    if (loading || !hasMore) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch('/api/design-shots');
+      const newData = await response.json();
+      
+      if (newData.length > 0) {
+        setPrompts(prev => [...prev, ...newData]);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Error loading content:', error);
+    }
+    setLoading(false);
+  };
+
+  const handleScroll = () => {
+    if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100) {
+      loadMoreContent();
+    }
+  };
 
   useEffect(() => {
-    fetch('/api/design-shots')
-      .then(res => res.json())
-      .then(data => {
-        setPrompts(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('API error:', err);
-        setLoading(false);
-      });
+    loadMoreContent();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading design library...</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loading, hasMore]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -42,47 +53,10 @@ export default function Home() {
           </p>
         </div>
         
-        {prompts.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No design content available. Check API configuration.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {prompts.map((prompt) => (
-              <div key={prompt.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="relative">
-                  <img 
-                    src={prompt.imageUrl} 
-                    alt={prompt.title} 
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="absolute top-2 right-2">
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
-                      Vector Art
-                    </span>
-                  </div>
-                  <div className="absolute top-2 left-2">
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                      {prompt.format}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">{prompt.title}</h3>
-                  <p className="text-gray-600 text-sm mb-3">{prompt.description}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">by {prompt.author}</span>
-                    <div className="flex items-center space-x-2 text-sm text-gray-500">
-                      <span>♥ {prompt.likes}</span>
-                      <span>↓ {prompt.downloads}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {prompts.map((prompt) => (
+            <div key={prompt.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="relative">
+                <img 
+                  src={prompt.imageUrl} 
+                  alt={prompt.title}
