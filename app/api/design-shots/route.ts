@@ -5,45 +5,42 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     
-    // Generate unique seed based on page and timestamp
-    const seed = page * 1000 + Date.now();
-    
+    // Search Wikimedia Commons for vector graphics and illustrations
     const categories = [
-      'Digital Illustration', 'Business Graphics', 'UI Design Mockups', 'Logo Design Work',
-      'Web Design Layouts', 'Icon Set Design', 'Brand Identity', 'Typography Design',
-      'Print Design', '3D Design Assets', 'Game Design Assets', 'Vector Patterns',
-      'App Interface Design', 'Creative Direction', 'Visual Identity', 'Motion Graphics'
+      'Vector_graphics', 'SVG_icons', 'Illustrations', 'Logo_designs', 
+      'Technical_drawings', 'Geometric_patterns', 'Abstract_art'
     ];
-
-    const searchTerms = [
-      'design', 'creative', 'graphic', 'digital', 'branding', 'minimal', 'modern', 'abstract',
-      'colorful', 'geometric', 'artistic', 'professional', 'corporate', 'startup', 'tech', 'mobile'
-    ];
-
-    const designContent = Array.from({ length: 12 }, (_, i) => {
-      // Create unique variations for each item
-      const itemSeed = seed + i * 137; // Use prime number for better distribution
-      const categoryIndex = itemSeed % categories.length;
-      const searchTerm = searchTerms[itemSeed % searchTerms.length];
-      const randomId = Math.floor(itemSeed % 9999) + 1000;
+    
+    const category = categories[(page - 1) % categories.length];
+    
+    // Wikimedia Commons API call for category members
+    const response = await fetch(
+      `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${category}&gcmlimit=12&gcmtype=file&prop=imageinfo&iiprop=url&format=json&origin=*`
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      const pages = data.query?.pages || {};
       
-      return {
-        id: `design_${page}_${itemSeed}_${i}`,
-        title: `${categories[categoryIndex]} Pack`,
-        description: `Professional ${categories[categoryIndex].toLowerCase()} featuring modern design principles and creative solutions`,
-        imageUrl: `https://picsum.photos/600/400?random=${randomId}&t=${itemSeed}`,
-        author: `Studio ${Math.floor(itemSeed % 50) + 1}`,
-        likes: Math.floor((itemSeed % 800)) + 100,
-        downloads: Math.floor((itemSeed % 300)) + 50,
-        format: ['SVG, AI', 'High-res JPG', 'Vector, PNG', '3D, OBJ', 'PSD, SKETCH'][itemSeed % 5],
-        category: categories[categoryIndex],
-        source: 'Design'
-      };
-    });
-
-    return NextResponse.json(designContent);
+      const designContent = Object.values(pages).map((page: any, i) => ({
+        id: `wikimedia_${page.pageid}`,
+        title: page.title.replace('File:', '').split('.')[0],
+        description: `Creative Commons ${category.replace('_', ' ').toLowerCase()} from Wikimedia Commons`,
+        imageUrl: page.imageinfo?.[0]?.url || `https://via.placeholder.com/600x400/6366f1/ffffff?text=Vector+Art`,
+        author: 'Wikimedia Contributor',
+        likes: Math.floor(Math.random() * 400) + 100,
+        downloads: Math.floor(Math.random() * 200) + 50,
+        format: 'SVG, CC License',
+        category: category.replace('_', ' '),
+        source: 'Wikimedia Commons'
+      }));
+      
+      return NextResponse.json(designContent);
+    }
+    
+    return NextResponse.json([]);
   } catch (error) {
-    console.error('Design API error:', error);
+    console.error('Wikimedia Commons API error:', error);
     return NextResponse.json([]);
   }
 }
