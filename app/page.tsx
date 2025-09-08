@@ -1,14 +1,29 @@
 import Link from "next/link";
 
+// Disable SSG here so build doesn’t attempt to evaluate client contexts.
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      <h1 className="text-3xl font-bold">Welcome to Haunted Promptshop</h1>
-      <p className="mt-2 text-neutral-600">Browse the feed, generate prompts from images, and build your library.</p>
-      <div className="mt-6 flex gap-3">
-        <Link href="/inspiration" className="rounded-lg bg-black px-4 py-2 text-white">Open Inspiration</Link>
-        <Link href="/library" className="rounded-lg border px-4 py-2">Open Prompt Library</Link>
+    <main className="mx-auto max-w-6xl px-4 py-10">
+      <h1 className="mb-6 text-2xl font-bold">Welcome</h1>
+      <p className="mb-6 text-neutral-700">
+        Jump right in:
+      </p>
+      <div className="flex gap-3">
+        <Link
+          href="/inspiration"
+          className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
+        >
+          Inspiration
+        </Link>
+        <Link
+          href="/library"
+          className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
+        >
+          Library
+        </Link>
       </div>
-    </div>
+    </main>
   );
 }

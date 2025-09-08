@@ -1,10 +1,37 @@
-export default function Home() {
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import PromptGrid from "@/components/PromptGrid";
+import type { Prompt } from "@/app/types";
+import { readMine } from "@/lib/storage";
+
+export default function LibraryPage() {
+  const [mine, setMine] = useState<Prompt[]>([]);
+
+  useEffect(() => {
+    setMine(readMine());
+  }, []);
+
+  const sorted = useMemo(
+    () =>
+      [...mine].sort((a, b) => {
+        if (a.favorite && !b.favorite) return -1;
+        if (!a.favorite && b.favorite) return 1;
+        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      }),
+    [mine]
+  );
+
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-3xl font-bold mb-3">Haunted Promptshop</h1>
-      <p className="text-neutral-600">
-        Head to <b>Inspiration</b> to generate a prompt from an image, or view your saved prompts in <b>Prompt Library</b>.
-      </p>
+    <main className="mx-auto max-w-6xl px-4 py-6">
+      <h1 className="mb-6 text-2xl font-bold">Prompt Library</h1>
+      {sorted.length ? (
+        <PromptGrid items={sorted} />
+      ) : (
+        <p className="py-10 text-center text-neutral-500">
+          Nothing saved yet. Go to <b>Inspiration</b> and use <b>Save</b> on any card.
+        </p>
+      )}
     </main>
   );
 }

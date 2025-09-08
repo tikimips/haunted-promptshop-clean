@@ -1,56 +1,45 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Toaster, toast } from "react-hot-toast";
-
 import GeneratePrompt from "@/components/GeneratePrompt";
 import InfiniteFeed from "@/components/InfiniteFeed";
 import PromptGrid from "@/components/PromptGrid";
-
 import type { Prompt } from "@/app/types";
-import { readMine, writeMine, toggleFavorite } from "@/lib/storage";
+import { readMine, writeMine } from "@/lib/storage";
 import { loadFeedPage } from "@/lib/feed";
+import toast from "react-hot-toast";
 
+// We keep this as a client page to use state + toasts easily.
+// We also avoid SSG issues by forcing dynamic at route level in the server file (app/page.tsx).
 export default function InspirationPage() {
-  const [tab, setTab] = useState<"all" | "mine">("all");
   const [mine, setMine] = useState<Prompt[]>([]);
+  const [tab, setTab] = useState<"all" | "mine">("all");
 
-  // Load saved prompts from localStorage on mount
   useEffect(() => {
-    try {
-      setMine(readMine());
-    } catch {
-      setMine([]);
-    }
+    setMine(readMine());
   }, []);
 
-  // Handlers used by both InfiniteFeed and PromptGrid
   const handleCopy = useCallback((text: string) => {
-    try {
-      navigator.clipboard.writeText(text);
-      toast.success("Copied to clipboard");
-    } catch {
-      toast.error("Copy failed");
-    }
+    navigator.clipboard.writeText(text).then(
+      () => toast.success("Prompt copied"),
+      () => toast.error("Copy failed")
+    );
   }, []);
 
   const handleSave = useCallback((p: Prompt) => {
     const updated = writeMine(p);
     setMine(updated);
-    toast.success("Saved to your library");
+    toast.success("Saved to library");
   }, []);
 
   const handleToggleFavorite = useCallback((p: Prompt) => {
-    const updated = toggleFavorite(p.id);
+    const updated = writeMine({ ...p, favorite: !p.favorite });
     setMine(updated);
   }, []);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
-      {/* Fix: Toaster has no containerId prop */}
-      <Toaster />
-
-      {/* Simple header + generate box */}
+      {/* Tabs */}
       <div className="mb-6 flex items-center gap-2">
         <button
           className={`rounded-md border px-3 py-1.5 text-sm ${
@@ -70,10 +59,10 @@ export default function InspirationPage() {
         </button>
       </div>
 
-      {/* Generate From Image / Notes */}
-      <GeneratePrompt onSaved={handleSave} />
-
-      <h1 className="mt-8 text-2xl font-bold">Inspiration</h1>
+      {/* Generator */}
+      <div className="mb-8">
+        <GeneratePrompt onSaved={handleSave} />
+      </div>
 
       {/* Content */}
       {tab === "all" ? (
@@ -92,8 +81,7 @@ export default function InspirationPage() {
         />
       ) : (
         <p className="py-10 text-center text-neutral-500">
-          Nothing saved yet. Go to <b>Inspiration</b> and use <b>Save</b> on any
-          card to add it to your library.
+          Nothing saved yet. Generate or browse prompts and click <b>Save</b>.
         </p>
       )}
     </main>

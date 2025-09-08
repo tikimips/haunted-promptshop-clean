@@ -1,29 +1,22 @@
 import "./globals.css";
-import { Inter } from "next/font/google";
-import { SessionProvider } from "next-auth/react";
+import Providers from "@/components/Providers";
 import Header from "@/components/Header";
-import { Toaster } from "react-hot-toast";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Promptshop",
-  description: "Inspiration → Prompts → Library",
+  title: "haunted-promptshop",
+  description: "Prompt inspiration and library",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // NOTE: layout.tsx is a Server Component, but we safely include Client Components
+  // (Providers, Header) inside it. They render on the client and won’t break prerender.
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <SessionProvider>
+      <body className="min-h-screen bg-white text-neutral-900">
+        <Providers>
           <Header />
-          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
-          <Toaster />
-        </SessionProvider>
+          {children}
+        </Providers>
       </body>
     </html>
   );

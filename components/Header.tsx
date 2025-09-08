@@ -7,41 +7,39 @@ export default function Header() {
   const { data: session, status } = useSession();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-40 w-full border-b bg-white/70 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-xl font-bold tracking-tight">
-            Promptshop
+        <div className="flex items-center gap-3">
+          <Link href="/" className="font-semibold tracking-tight">
+            haunted-promptshop
           </Link>
           <nav className="hidden gap-4 sm:flex">
-            <Link href="/inspiration" className="text-sm text-neutral-700 hover:underline">
+            <Link href="/inspiration" className="text-sm text-neutral-700 hover:text-black">
               Inspiration
             </Link>
-            <Link href="/library" className="text-sm text-neutral-700 hover:underline">
+            <Link href="/library" className="text-sm text-neutral-700 hover:text-black">
               Library
             </Link>
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
-          {status === "loading" ? (
-            <span className="text-sm text-neutral-500">…</span>
-          ) : session ? (
+        <div className="flex items-center gap-2">
+          {status === "authenticated" ? (
             <>
-              <span className="hidden text-sm text-neutral-600 sm:inline">
-                {session.user?.email || session.user?.name}
+              <span className="hidden text-sm text-neutral-700 sm:inline">
+                {session.user?.email || session.user?.name || "Signed in"}
               </span>
               <button
-                className="rounded-md border px-3 py-1 text-sm hover:bg-neutral-50"
                 onClick={() => signOut()}
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
               >
                 Sign out
               </button>
             </>
           ) : (
             <button
-              className="rounded-md border px-3 py-1 text-sm hover:bg-neutral-50"
               onClick={() => signIn()}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
             >
               Sign in
             </button>
