@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const searchTerms = ['logo', 'icon', 'illustration', 'vector', 'design', 'graphic'];
     const term = searchTerms[(page - 1) % searchTerms.length];
     
-    const response = await fetch(`https://api.freepik.com/v1/resources?query=${term}&limit=12&page=${page}`, {
+    const response = await fetch(`https://api.freepik.com/v1/resources?query=${term}&limit=30&page=${page}`, {
       headers: {
         'X-Freepik-API-Key': process.env.FREEPIK_API_KEY,
         'Accept': 'application/json'
@@ -61,7 +61,7 @@ function createPlaceholderContent(page: number) {
     { name: 'Web Design', color: 'ef4444' }
   ];
   
-  const designContent = Array.from({ length: 12 }, (_, i) => {
+  const designContent = Array.from({ length: 30 }, (_, i) => {
     const design = designTypes[i % designTypes.length];
     const uniqueId = page * 1000 + i;
     
