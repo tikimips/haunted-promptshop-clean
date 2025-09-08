@@ -1,19 +1,7 @@
-// components/PromptGrid.tsx
 "use client";
 
 import PromptCard from "@/components/PromptCard";
-
-export type Prompt = {
-  id: string;
-  title: string;
-  description?: string;
-  author?: string;
-  imageUrl?: string;
-  prompt: string;        // actual text to copy/run
-  promptText?: string;   // kept for older code paths
-  favorite?: boolean;
-  createdAt?: string;
-};
+import { Prompt } from "@/app/types";
 
 type Props = {
   items: Prompt[];
