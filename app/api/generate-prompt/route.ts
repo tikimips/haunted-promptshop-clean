@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const dataUrl = await toDataUrl(image);
+    const dataUrl = await fileToBase64(image);
     console.log("DataURL created, length:", dataUrl.length);
 
     const chat = await client.chat.completions.create({
