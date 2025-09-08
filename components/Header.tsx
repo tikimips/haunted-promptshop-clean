@@ -1,51 +1,48 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signIn, signOut } from 'next-auth/react'
+import Image from 'next/image'
 
 export default function Header() {
-  const { data: session, status } = useSession();
+  const { data: session, status } = useSession()
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-white/70 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="font-semibold tracking-tight">
-            haunted-promptshop
-          </Link>
-          <nav className="hidden gap-4 sm:flex">
-            <Link href="/inspiration" className="text-sm text-neutral-700 hover:text-black">
-              Inspiration
-            </Link>
-            <Link href="/library" className="text-sm text-neutral-700 hover:text-black">
-              Library
-            </Link>
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {status === "authenticated" ? (
-            <>
-              <span className="hidden text-sm text-neutral-700 sm:inline">
-                {session.user?.email || session.user?.name || "Signed in"}
-              </span>
-              <button
+    <header className="border-b border-gray-200 p-4">
+      <div className="flex justify-between items-center max-w-7xl mx-auto">
+        <h1 className="text-xl font-semibold">Promptshop</h1>
+        
+        <div className="flex items-center gap-4">
+          {status === 'loading' ? (
+            <div>Loading...</div>
+          ) : session ? (
+            <div className="flex items-center gap-2">
+              {session.user?.image && (
+                <Image
+                  src={session.user.image}
+                  alt="Profile"
+                  width={32}
+                  height={32}
+                  className="rounded-full"
+                />
+              )}
+              <span className="text-sm">{session.user?.name}</span>
+              <button 
                 onClick={() => signOut()}
-                className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
+                className="text-sm text-gray-600 hover:text-gray-800"
               >
-                Sign out
+                Sign Out
               </button>
-            </>
+            </div>
           ) : (
             <button
-              onClick={() => signIn()}
-              className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
+              onClick={() => signIn('google')}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
             >
-              Sign in
+              Sign In with Google
             </button>
           )}
         </div>
       </div>
     </header>
-  );
+  )
 }
