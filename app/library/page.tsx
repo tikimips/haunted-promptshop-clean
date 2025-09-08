@@ -23,8 +23,6 @@ export default function Library() {
     if (loading || !hasMore) return;
     
     setLoading(true);
-    
-    // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 800));
     
     const newPrompts = generateMockPrompts(PROMPTS_PER_PAGE, (page - 1) * PROMPTS_PER_PAGE + 1);
@@ -62,13 +60,26 @@ export default function Library() {
             Browse your saved prompts and favorites
           </p>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {prompts.map((prompt) => (
             <PromptCard key={prompt.id} prompt={prompt} />
           ))}
         </div>
-
         {loading && (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-gray-600">Loading more prompts...</span>
+          </div>
+        )}
+        {hasMore && !loading && (
+          <div ref={setTargetRef} className="h-4 w-full" />
+        )}
+        {!hasMore && (
+          <div className="text-center py-8">
+            <p className="text-gray-500">You've reached the end! 🎉</p>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
