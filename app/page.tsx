@@ -5,31 +5,24 @@ import { useState, useEffect } from 'react';
 export default function Home() {
   const [prompts, setPrompts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages] = useState(10); // Cap at 10 pages to control costs
 
-  const loadContent = async () => {
+  const loadPage = async (page: number) => {
     setLoading(true);
     try {
       const response = await fetch(`/api/design-shots?page=${page}`);
       const data = await response.json();
-      setPrompts(prev => [...prev, ...data]);
-      setPage(prev => prev + 1);
+      setPrompts(data);
+      setCurrentPage(page);
     } catch (error) {
       console.error('Error:', error);
     }
     setLoading(false);
   };
 
-  const handleScroll = () => {
-    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000 && !loading) {
-      loadContent();
-    }
-  };
-
   useEffect(() => {
-    loadContent();
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    loadPage(1);
   }, []);
 
   return (
@@ -54,6 +47,49 @@ export default function Home() {
               </div>
             </div>
           ))}
+        </div>
+        
+        {/* Pagination */}
+        <div className="flex justify-center items-center mt-8 space-x-2">
+          <button 
+            onClick={() => loadPage(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+          
+          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+            const pageNum = Math.max(1, currentPage - 2) + i;
+            if (pageNum > totalPages) return null;
+            
+            return (
+              <button
+                key={pageNum}
+                onClick={() => loadPage(pageNum)}
+                disabled={loading}
+                className={`px-4 py-2 border rounded-lg ${
+                  pageNum === currentPage 
+                    ? 'bg-blue-600 text-white border-blue-600' 
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+          
+          <button 
+            onClick={() => loadPage(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+        </div>
+        
+        <div className="text-center mt-4 text-sm text-gray-500">
+          Page {currentPage} of {totalPages}
         </div>
         
         {loading && (
