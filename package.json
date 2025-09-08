@@ -16,7 +16,8 @@
     "@supabase/supabase-js": "^2.44.4",
     "@supabase/ssr": "^0.4.0",
     "lucide-react": "^0.263.1",
-    "react-hot-toast": "^2.4.1"
+    "react-hot-toast": "^2.4.1",
+    "openai": "^4.52.7"
   },
   "devDependencies": {
     "typescript": "^5",
