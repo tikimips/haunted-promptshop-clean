@@ -1,5 +1,5 @@
 // lib/feed.ts
-import type { Prompt } from "@/components/PromptGrid";
+import type { Prompt } from "@/app/types";
 
 export async function loadFeedPage(page: number): Promise<Prompt[]> {
   const res = await fetch(`/api/feed?page=${page}`, { cache: "no-store" });
