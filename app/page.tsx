@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-interface MockPrompt {
+interface DesignPrompt {
   id: string;
   title: string;
   description: string;
@@ -10,44 +10,70 @@ interface MockPrompt {
   author: string;
   likes: number;
   downloads: number;
+  tags: string[];
+  source: 'behance' | 'design' | 'curated';
 }
 
 export default function Home() {
-  const [prompts, setPrompts] = useState<MockPrompt[]>([]);
+  const [prompts, setPrompts] = useState<DesignPrompt[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const generatePrompts = (count: number, startId: number): MockPrompt[] => {
-    const categories = ['UI/UX', 'Branding', 'Illustration', 'Photography', 'Marketing', 'Web Design'];
-    const styles = ['Modern', 'Minimalist', 'Vintage', 'Bold', 'Elegant', 'Playful'];
-    
-    return Array.from({ length: count }, (_, i) => {
-      const id = startId + i;
-      return {
-        id: id.toString(),
-        title: `Creative ${styles[Math.floor(Math.random() * styles.length)]} ${categories[Math.floor(Math.random() * categories.length)]} Prompt`,
-        description: `Generate amazing designs with this creative prompt featuring modern aesthetics and professional layouts.`,
-        imageUrl: `https://images.unsplash.com/photo-${1558655146 + (id % 10)}?w=400&h=300&fit=crop&auto=format`,
-        author: `Designer ${Math.floor(Math.random() * 100) + 1}`,
-        likes: Math.floor(Math.random() * 500),
-        downloads: Math.floor(Math.random() * 200)
-      };
-    });
+  const fetchDesignContent = async (): Promise<DesignPrompt[]> => {
+    try {
+      const [behanceResponse, designResponse] = await Promise.all([
+        fetch('/api/behance-projects'),
+        fetch('/api/design-shots')
+      ]);
+
+      const behanceData = behanceResponse.ok ? await behanceResponse.json() : [];
+      const designData = designResponse.ok ? await designResponse.json() : [];
+
+      // Convert to prompt format
+      const designPrompts: DesignPrompt[] = [
+        ...behanceData.slice(0, 6).map((item: any) => ({
+          id: item.id,
+          title: `${item.name} - Design Inspiration`,
+          description: `Create a professional design inspired by this ${item.tags?.[0] || 'creative'} work. Focus on modern aesthetics, clean layouts, and innovative visual solutions.`,
+          imageUrl: item.imageUrl,
+          author: item.author,
+          likes: item.likes,
+          downloads: Math.floor(item.likes * 0.3),
+          tags: Array.isArray(item.tags) ? item.tags.slice(0, 3) : ['Design'],
+          source: 'behance' as const
+        })),
+        ...designData.slice(0, 6).map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          description: `Design a modern interface inspired by this ${item.tags?.[0] || 'design'} approach. Emphasize clean typography, intuitive layouts, and contemporary design patterns.`,
+          imageUrl: item.imageUrl,
+          author: item.author,
+          likes: item.likes,
+          downloads: Math.floor(item.likes * 0.4),
+          tags: Array.isArray(item.tags) ? item.tags.slice(0, 3) : ['Design'],
+          source: 'design' as const
+        }))
+      ];
+
+      return designPrompts;
+    } catch (error) {
+      console.error('Error fetching design content:', error);
+      return [];
+    }
   };
 
   const loadMorePrompts = async () => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    const newPrompts = generatePrompts(12, prompts.length + 1);
+    const newPrompts = await fetchDesignContent();
     setPrompts(prev => [...prev, ...newPrompts]);
     setLoading(false);
   };
 
   const handleScroll = () => {
-    if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || loading) {
-      return;
+    if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100 && !loading) {
+      loadMorePrompts();
     }
-    loadMorePrompts();
   };
 
   useEffect(() => {
@@ -66,23 +92,42 @@ export default function Home() {
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Discover Amazing Prompts
+            Design Prompt Library
           </h1>
           <p className="text-xl text-gray-600">
-            Find the perfect prompt for your next creative project
+            Professional design inspiration and creative prompts
           </p>
         </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {prompts.map((prompt) => (
             <div key={prompt.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-              <img 
-                src={prompt.imageUrl} 
-                alt={prompt.title}
-                className="w-full h-48 object-cover"
-              />
+              <div className="relative">
+                <img 
+                  src={prompt.imageUrl} 
+                  alt={prompt.title}
+                  className="w-full h-48 object-cover"
+                />
+                <div className="absolute top-2 right-2">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    prompt.source === 'behance' ? 'bg-blue-100 text-blue-800' :
+                    prompt.source === 'design' ? 'bg-purple-100 text-purple-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {prompt.source === 'behance' ? 'Behance' : 'Design'}
+                  </span>
+                </div>
+              </div>
               <div className="p-4">
-                <h3 className="font-semibold text-lg mb-2">{prompt.title}</h3>
-                <p className="text-gray-600 text-sm mb-3">{prompt.description}</p>
+                <h3 className="font-semibold text-lg mb-2 line-clamp-2">{prompt.title}</h3>
+                <p className="text-gray-600 text-sm mb-3 line-clamp-3">{prompt.description}</p>
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {prompt.tags.slice(0, 2).map((tag, index) => (
+                    <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">by {prompt.author}</span>
                   <div className="flex items-center space-x-2 text-sm text-gray-500">
@@ -94,10 +139,11 @@ export default function Home() {
             </div>
           ))}
         </div>
+        
         {loading && (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">Loading more prompts...</span>
+            <span className="ml-2 text-gray-600">Loading design inspiration...</span>
           </div>
         )}
       </main>
