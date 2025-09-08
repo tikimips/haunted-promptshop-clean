@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import PromptGrid, { type Prompt } from "@/components/PromptGrid";
+import PromptGrid from "@/components/PromptGrid";
+import { type Prompt } from "@/app/types";
 
 type FeedLoader = (page: number) => Promise<Prompt[]>;
 
