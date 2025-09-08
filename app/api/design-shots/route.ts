@@ -5,12 +5,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     
-    // Create unique seed for this page
     const seed = page * 1337 + Date.now() % 10000;
-    
     const designContent = [];
     
-    // Try to get 2-3 items from Wikimedia Commons first
+    // Try Wikimedia Commons first (without timeout)
     const wikiCategories = [
       'Vector_graphics', 'SVG_icons', 'Illustrations', 'Logo_designs', 
       'Diagrams', 'Maps', 'Symbols', 'Pictograms', 'Graphic_design'
@@ -21,8 +19,7 @@ export async function GET(request: Request) {
     
     try {
       const wikiResponse = await fetch(
-        `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${category}&gcmlimit=3&gcmtype=file&prop=imageinfo&iiprop=url&format=json&origin=*`,
-        { timeout: 3000 }
+        `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${category}&gcmlimit=3&gcmtype=file&prop=imageinfo&iiprop=url&format=json&origin=*`
       );
       
       if (wikiResponse.ok) {
@@ -47,55 +44,44 @@ export async function GET(request: Request) {
         });
       }
     } catch (error) {
-      console.log('Wikimedia timeout, using fallbacks');
+      console.log('Wikimedia error, using fallbacks');
     }
     
     // Fill remaining slots with other sources
     const sources = [
-      // ManyPixels illustrations
       {
         type: 'manypixels',
-        items: ['working-late', 'team-meeting', 'creative-process', 'startup-life', 'remote-work',
-                'brainstorming', 'product-launch', 'data-analysis', 'customer-support', 'marketing'],
+        items: ['working-late', 'team-meeting', 'creative-process', 'startup-life', 'remote-work'],
         format: 'SVG, AI',
         source: 'ManyPixels'
       },
-      // unDraw illustrations 
       {
         type: 'undraw',
-        items: ['programming', 'design-process', 'business-plan', 'startup', 'team-collaboration',
-                'creative-thinking', 'data-visualization', 'mobile-development', 'web-analytics'],
+        items: ['programming', 'design-process', 'business-plan', 'startup', 'team-collaboration'],
         format: 'SVG, PNG',
         source: 'unDraw'
       },
-      // Open Doodles
       {
         type: 'opendoodles',
-        items: ['standing', 'sitting', 'messy', 'reading', 'selfie', 'dancing', 
-                'coffee', 'music', 'yoga', 'cooking', 'gaming', 'study'],
+        items: ['standing', 'sitting', 'messy', 'reading', 'selfie'],
         format: 'PNG, SVG',
         source: 'Open Doodles'
       },
-      // Unsplash design photos
       {
         type: 'unsplash',
-        items: ['ui-design', 'graphic-design', 'branding', 'logo-design', 'web-design',
-                'typography', 'illustration', 'creative', 'workspace', 'design-studio'],
+        items: ['ui-design', 'graphic-design', 'branding', 'logo-design', 'web-design'],
         format: 'High-res JPG',
         source: 'Unsplash'
       }
     ];
     
-    // Add items from other sources to reach 12 total
     let sourceIndex = 0;
     while (designContent.length < 12) {
       const source = sources[sourceIndex % sources.length];
       const itemSeed = seed + designContent.length * 23;
       const item = source.items[itemSeed % source.items.length];
       
-      let imageUrl;
-      let title;
-      let description;
+      let imageUrl, title, description;
       
       switch (source.type) {
         case 'manypixels':
