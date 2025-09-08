@@ -10,10 +10,17 @@ interface UploadedImage {
   isFavorite: boolean;
 }
 
+interface PendingUpload {
+  file: File;
+  url: string;
+}
+
 export default function Home() {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const [hoveredImage, setHoveredImage] = useState<string | null>(null);
+  const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Load images from localStorage on mount
   useEffect(() => {
@@ -28,25 +35,62 @@ export default function Home() {
     localStorage.setItem('promptshop-images', JSON.stringify(images));
   }, [images]);
 
-  const handleImageUpload = async (file: File) => {
-    // Create URL for the uploaded file
+  const handleFileSelected = (file: File) => {
     const imageUrl = URL.createObjectURL(file);
-    
-    // Convert file to base64 for API
-    const base64 = await fileToBase64(file);
-    
-    // Analyze image with Claude
-    const generatedPrompt = await analyzeImage(base64);
-    
-    const newImage: UploadedImage = {
-      id: Date.now().toString(),
-      url: imageUrl,
-      prompt: generatedPrompt,
-      uploadedAt: new Date().toISOString(),
-      isFavorite: false
-    };
+    setPendingUpload({ file, url: imageUrl });
+  };
 
-    setImages(prev => [newImage, ...prev]); // Add to beginning (most recent first)
+  const handleChooseAnother = () => {
+    if (pendingUpload) {
+      URL.revokeObjectURL(pendingUpload.url);
+    }
+    setPendingUpload(null);
+    // Reset file input
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+
+  const handleCancel = () => {
+    if (pendingUpload) {
+      URL.revokeObjectURL(pendingUpload.url);
+    }
+    setPendingUpload(null);
+    // Reset file input
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+
+  const handleGeneratePrompt = async () => {
+    if (!pendingUpload) return;
+    
+    setIsGenerating(true);
+    
+    try {
+      // Convert file to base64 for API
+      const base64 = await fileToBase64(pendingUpload.file);
+      
+      // Analyze image with Claude
+      const generatedPrompt = await analyzeImage(base64);
+      
+      const newImage: UploadedImage = {
+        id: Date.now().toString(),
+        url: pendingUpload.url,
+        prompt: generatedPrompt,
+        uploadedAt: new Date().toISOString(),
+        isFavorite: false
+      };
+
+      setImages(prev => [newImage, ...prev]);
+      setPendingUpload(null);
+      
+      // Reset file input
+      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+    } catch (error) {
+      console.error('Error generating prompt:', error);
+    }
+    
+    setIsGenerating(false);
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -84,7 +128,6 @@ export default function Home() {
 
   const copyPrompt = (prompt: string) => {
     navigator.clipboard.writeText(prompt);
-    // You could add a toast notification here
   };
 
   const filteredImages = filter === 'favorites' 
@@ -101,7 +144,17 @@ export default function Home() {
 
         {/* Upload Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <UploadComponent onImageUpload={handleImageUpload} />
+          {!pendingUpload ? (
+            <UploadComponent onFileSelected={handleFileSelected} />
+          ) : (
+            <ConfirmationComponent 
+              imageUrl={pendingUpload.url}
+              onChooseAnother={handleChooseAnother}
+              onGeneratePrompt={handleGeneratePrompt}
+              onCancel={handleCancel}
+              isGenerating={isGenerating}
+            />
+          )}
         </div>
 
         {/* Filters */}
@@ -138,7 +191,6 @@ export default function Home() {
         {/* Library Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {filteredImages.length === 0 && images.length === 0 && (
-            // Starter tile when no images uploaded
             <div className="col-span-full flex justify-center">
               <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
                 <p className="text-gray-500 text-lg">Your library will appear here</p>
@@ -148,7 +200,6 @@ export default function Home() {
           )}
 
           {filteredImages.length === 0 && images.length > 0 && filter === 'favorites' && (
-            // No favorites message
             <div className="col-span-full flex justify-center">
               <div className="bg-gray-100 rounded-lg p-8 text-center">
                 <p className="text-gray-500">No favorites yet</p>
@@ -172,7 +223,6 @@ export default function Home() {
                 />
               </div>
 
-              {/* Hover Controls */}
               {hoveredImage === image.id && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center space-x-2">
                   <button
@@ -194,7 +244,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Favorite indicator */}
               {image.isFavorite && (
                 <div className="absolute top-2 right-2">
                   <div className="bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">
@@ -211,15 +260,12 @@ export default function Home() {
 }
 
 // Upload Component
-function UploadComponent({ onImageUpload }: { onImageUpload: (file: File) => void }) {
+function UploadComponent({ onFileSelected }: { onFileSelected: (file: File) => void }) {
   const [dragActive, setDragActive] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const handleFileSelect = async (file: File) => {
+  const handleFileSelect = (file: File) => {
     if (file && file.type.startsWith('image/')) {
-      setIsAnalyzing(true);
-      await onImageUpload(file);
-      setIsAnalyzing(false);
+      onFileSelected(file);
     }
   };
 
@@ -236,44 +282,97 @@ function UploadComponent({ onImageUpload }: { onImageUpload: (file: File) => voi
   };
 
   return (
-    <div className="space-y-4">
-      <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-          dragActive
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
-        }`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragActive(true);
-        }}
-        onDragLeave={() => setDragActive(false)}
-        onDrop={handleDrop}
-      >
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileInput}
-          className="hidden"
-          id="file-upload"
-          disabled={isAnalyzing}
+    <div
+      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+        dragActive
+          ? 'border-blue-500 bg-blue-50'
+          : 'border-gray-300 hover:border-gray-400'
+      }`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragActive(true);
+      }}
+      onDragLeave={() => setDragActive(false)}
+      onDrop={handleDrop}
+    >
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleFileInput}
+        className="hidden"
+        id="file-upload"
+      />
+      <label htmlFor="file-upload" className="cursor-pointer">
+        <div className="text-gray-600">
+          <p className="text-lg font-medium">Drop an image here or click to upload</p>
+          <p className="text-sm text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
+        </div>
+      </label>
+    </div>
+  );
+}
+
+// Confirmation Component
+function ConfirmationComponent({ 
+  imageUrl, 
+  onChooseAnother, 
+  onGeneratePrompt, 
+  onCancel, 
+  isGenerating 
+}: {
+  imageUrl: string;
+  onChooseAnother: () => void;
+  onGeneratePrompt: () => void;
+  onCancel: () => void;
+  isGenerating: boolean;
+}) {
+  return (
+    <div className="flex gap-6">
+      <div className="w-48 h-48 flex-shrink-0">
+        <img 
+          src={imageUrl} 
+          alt="Preview" 
+          className="w-full h-full object-cover rounded-lg"
         />
-        <label htmlFor="file-upload" className={`cursor-pointer ${isAnalyzing ? 'pointer-events-none' : ''}`}>
-          <div className="text-gray-600">
-            {isAnalyzing ? (
+      </div>
+      
+      <div className="flex-1 flex flex-col justify-center space-y-4">
+        <p className="text-lg font-medium text-gray-900 mb-4">
+          What would you like to do with this image?
+        </p>
+        
+        <div className="space-y-3">
+          <button
+            onClick={onChooseAnother}
+            disabled={isGenerating}
+            className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Choose another photo
+          </button>
+          
+          <button
+            onClick={onGeneratePrompt}
+            disabled={isGenerating}
+            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {isGenerating ? (
               <>
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                <p className="text-lg font-medium">Analyzing image and generating prompt...</p>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Generating prompt...
               </>
             ) : (
-              <>
-                <p className="text-lg font-medium">Drop an image here or click to upload</p>
-                <p className="text-sm text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
-                <p className="text-xs text-gray-400 mt-2">Claude will analyze your image and generate a prompt automatically</p>
-              </>
+              'Generate Prompt'
             )}
-          </div>
-        </label>
+          </button>
+          
+          <button
+            onClick={onCancel}
+            disabled={isGenerating}
+            className="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
