@@ -9,9 +9,11 @@ interface DesignPrompt {
   imageUrl: string;
   author: string;
   likes: number;
-  downloads: number;
+  downloads?: number;
   tags: string[];
-  source: 'behance' | 'design' | 'curated';
+  source: 'design' | 'illustration';
+  format?: string;
+  style?: string;
 }
 
 export default function Home() {
@@ -20,43 +22,45 @@ export default function Home() {
 
   const fetchDesignContent = async (): Promise<DesignPrompt[]> => {
     try {
-      const [behanceResponse, designResponse] = await Promise.all([
-        fetch('/api/behance-projects'),
-        fetch('/api/design-shots')
+      const [designResponse, illustrationResponse] = await Promise.all([
+        fetch('/api/design-shots'),
+        fetch('/api/illustrations')
       ]);
 
-      const behanceData = behanceResponse.ok ? await behanceResponse.json() : [];
       const designData = designResponse.ok ? await designResponse.json() : [];
+      const illustrationData = illustrationResponse.ok ? await illustrationResponse.json() : [];
 
-      // Convert to prompt format
-      const designPrompts: DesignPrompt[] = [
-        ...behanceData.slice(0, 6).map((item: any) => ({
-          id: item.id,
-          title: `${item.name} - Design Inspiration`,
-          description: `Create a professional design inspired by this ${item.tags?.[0] || 'creative'} work. Focus on modern aesthetics, clean layouts, and innovative visual solutions.`,
-          imageUrl: item.imageUrl,
-          author: item.author,
-          likes: item.likes,
-          downloads: Math.floor(item.likes * 0.3),
-          tags: Array.isArray(item.tags) ? item.tags.slice(0, 3) : ['Design'],
-          source: 'behance' as const
-        })),
+      const mixedContent: DesignPrompt[] = [
         ...designData.slice(0, 6).map((item: any) => ({
           id: item.id,
           title: item.title,
-          description: `Design a modern interface inspired by this ${item.tags?.[0] || 'design'} approach. Emphasize clean typography, intuitive layouts, and contemporary design patterns.`,
+          description: item.description,
           imageUrl: item.imageUrl,
           author: item.author,
           likes: item.likes,
-          downloads: Math.floor(item.likes * 0.4),
-          tags: Array.isArray(item.tags) ? item.tags.slice(0, 3) : ['Design'],
-          source: 'design' as const
+          downloads: item.downloads || Math.floor(item.likes * 0.3),
+          tags: item.tags || ['Design'],
+          source: 'design' as const,
+          format: item.format || 'Vector'
+        })),
+        ...illustrationData.slice(0, 6).map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          imageUrl: item.imageUrl,
+          author: item.author,
+          likes: item.likes,
+          downloads: item.downloads || Math.floor(item.likes * 0.4),
+          tags: item.tags || ['Illustration'],
+          source: 'illustration' as const,
+          format: item.format || 'SVG',
+          style: item.style
         }))
       ];
 
-      return designPrompts;
+      return mixedContent;
     } catch (error) {
-      console.error('Error fetching design content:', error);
+      console.error('Error fetching content:', error);
       return [];
     }
   };
@@ -92,10 +96,10 @@ export default function Home() {
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Design Prompt Library
+            Vector & Illustration Library
           </h1>
           <p className="text-xl text-gray-600">
-            Professional design inspiration and creative prompts
+            Professional vectors, 3D renders, game assets & graphic designs
           </p>
         </div>
         
@@ -110,11 +114,15 @@ export default function Home() {
                 />
                 <div className="absolute top-2 right-2">
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    prompt.source === 'behance' ? 'bg-blue-100 text-blue-800' :
-                    prompt.source === 'design' ? 'bg-purple-100 text-purple-800' :
-                    'bg-green-100 text-green-800'
+                    prompt.source === 'design' ? 'bg-blue-100 text-blue-800' :
+                    'bg-purple-100 text-purple-800'
                   }`}>
-                    {prompt.source === 'behance' ? 'Behance' : 'Design'}
+                    {prompt.source === 'design' ? 'Design' : 'Vector Art'}
+                  </span>
+                </div>
+                <div className="absolute top-2 left-2">
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                    {prompt.format}
                   </span>
                 </div>
               </div>
@@ -126,27 +134,3 @@ export default function Home() {
                     <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
                       {tag}
                     </span>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">by {prompt.author}</span>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <span>♥ {prompt.likes}</span>
-                    <span>↓ {prompt.downloads}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {loading && (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">Loading design inspiration...</span>
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
