@@ -4,7 +4,7 @@
 import { useRef, useState } from "react";
 import { Loader2, ImageIcon, Camera } from "lucide-react";
 import toast from "react-hot-toast";
-import type { Prompt } from "./PromptGrid";
+import type { Prompt } from "@/app/types";
 
 type Props = { onSaved?: (p: Prompt) => void };
 
@@ -62,7 +62,7 @@ export default function GeneratePrompt({ onSaved }: Props) {
 
         <input
           className="flex-1 rounded-md border px-3 py-1.5 text-sm"
-          placeholder="Name this prompt (e.g., “Isometric dashboard”)"
+          placeholder="Name this prompt (e.g., "Isometric dashboard")"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
