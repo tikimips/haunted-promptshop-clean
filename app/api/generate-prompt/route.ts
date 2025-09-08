@@ -16,17 +16,27 @@ function toDataUrl(file: File) {
 
 export async function POST(req: Request) {
   try {
+    // Debug logging
+    console.log("API Key exists:", !!process.env.OPENAI_API_KEY);
+    
     const form = await req.formData();
     const name = (form.get("name") as string) || "Untitled";
     const image = form.get("image") as File | null;
+
+    console.log("Form data:", { name, hasImage: !!image });
 
     if (!image) {
       return new NextResponse("No image provided", { status: 400 });
     }
 
+    if (!process.env.OPENAI_API_KEY) {
+      return new NextResponse("OpenAI API key not configured", { status: 500 });
+    }
+
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const dataUrl = await toDataUrl(image);
+    console.log("DataURL created, length:", dataUrl.length);
 
     const chat = await client.chat.completions.create({
       model: "gpt-4o-mini",
