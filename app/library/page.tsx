@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import PromptGrid, { type Prompt } from "@/components/PromptGrid";
+import PromptGrid from "@/components/PromptGrid";
+import { type Prompt } from "@/app/types";
 import { readMine } from "@/lib/storage";
 
 export default function LibraryPage() {
