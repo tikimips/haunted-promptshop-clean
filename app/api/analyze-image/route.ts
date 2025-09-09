@@ -2,76 +2,64 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
 
 export async function POST(req: NextRequest) {
+  console.log('=== API START ===');
+  
   try {
-    // Check if we're in test mode
+    // Check environment
+    console.log('Environment check:');
+    console.log('- TEST_MODE:', process.env.TEST_MODE);
+    console.log('- Has ANTHROPIC_API_KEY:', !!process.env.ANTHROPIC_API_KEY);
+    console.log('- API Key starts with sk-ant:', process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant-'));
+    
+    // Test mode
     if (process.env.TEST_MODE === 'true') {
       console.log('TEST_MODE enabled - returning mock response');
-      const body = await req.json();
-      const { name } = body;
-      
       return NextResponse.json({
-        id: crypto.randomUUID(),
-        title: name || "Test Image",
-        author: "Test Mode",
-        description: "Mock response for testing",
-        imageUrl: "https://via.placeholder.com/400x300",
-        promptText: "Modern minimalist design with clean lines, professional typography, and subtle color palette. Focus on white space and elegant composition.",
-        favorite: false,
-        createdAt: new Date().toISOString(),
+        promptText: "Test mode: Modern minimalist design with clean lines and vibrant colors."
       });
     }
 
-    // Debug logging
-    console.log('=== Claude API Debug Start ===');
-    console.log('API Key exists:', !!process.env.ANTHROPIC_API_KEY);
-    console.log('API Key prefix:', process.env.ANTHROPIC_API_KEY?.substring(0, 10) + '...');
-    
-    // Parse JSON data
+    // Parse request
+    console.log('Parsing request body...');
     const body = await req.json();
-    const { name, image } = body;
+    console.log('Body keys:', Object.keys(body));
+    console.log('Has image:', !!body.image);
+    console.log('Image length:', body.image?.length);
 
-    console.log('Request body received:', { 
-      name, 
-      hasImage: !!image,
-      imageLength: image?.length 
-    });
-
-    if (!image) {
-      console.error('No image provided in request body');
+    if (!body.image) {
+      console.error('No image in request body');
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
     }
 
     if (!process.env.ANTHROPIC_API_KEY) {
-      console.error('ANTHROPIC_API_KEY environment variable not set');
-      return NextResponse.json({ error: "Anthropic API key not configured" }, { status: 500 });
+      console.error('Missing ANTHROPIC_API_KEY');
+      return NextResponse.json({ error: "API key not configured" }, { status: 500 });
     }
 
-    // Validate API key format
-    if (!process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-')) {
-      console.error('Invalid API key format - should start with sk-ant-');
-      return NextResponse.json({ error: "Invalid API key format" }, { status: 500 });
-    }
-
-    // Initialize Anthropic client
+    // Initialize Anthropic
+    console.log('Creating Anthropic client...');
     const anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
-    // Convert base64 image data
-    console.log('Processing base64 image data...');
-    const base64Data = image.split(',')[1]; // Remove data:image/type;base64, prefix
-    const mediaType = image.split(';')[0].split(':')[1] as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+    // Process image
+    console.log('Processing image data...');
+    const base64Data = body.image.split(',')[1];
+    const mediaType = body.image.split(';')[0].split(':')[1] as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
     
-    console.log('Image processed:', {
-      base64Length: base64Data.length,
-      mediaType: mediaType,
-      estimatedSizeKB: Math.round(base64Data.length * 0.75 / 1024)
-    });
+    console.log('Image details:');
+    console.log('- Media type:', mediaType);
+    console.log('- Base64 length:', base64Data?.length);
 
-    // Make API call to Claude
-    console.log('Making API call to Claude...');
+    if (!base64Data) {
+      console.error('Failed to extract base64 data from image');
+      return NextResponse.json({ error: "Invalid image format" }, { status: 400 });
+    }
+
+    // Make API call
+    console.log('Making Anthropic API call...');
     const response = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307", // Latest stable model
+      model: "claude-3-haiku-20240307",
       max_tokens: 300,
       messages: [
         {
@@ -79,7 +67,7 @@ export async function POST(req: NextRequest) {
           content: [
             {
               type: "text",
-              text: "Analyze this image and create a detailed AI art generation prompt. Focus on visual style, composition, colors, mood, and artistic elements. Return only the prompt text - no quotes, explanations, or extra formatting."
+              text: "Analyze this image and create a detailed AI art generation prompt. Focus on visual style, composition, colors, mood, and artistic elements. Return only the prompt text."
             },
             {
               type: "image",
@@ -94,55 +82,35 @@ export async function POST(req: NextRequest) {
       ]
     });
 
-    console.log('Claude API response received:', {
-      hasContent: !!response.content,
-      contentLength: response.content?.length,
-      contentType: response.content?.[0]?.type
-    });
+    console.log('API response received');
+    console.log('- Content array length:', response.content?.length);
+    console.log('- First content type:', response.content?.[0]?.type);
 
     const promptText = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '';
     
     if (!promptText) {
-      console.error('Claude returned empty or invalid content');
+      console.error('Empty prompt text from Claude');
       return NextResponse.json({ error: "Failed to generate prompt" }, { status: 500 });
     }
 
-    const result = {
-      id: crypto.randomUUID(),
-      title: name || "Untitled",
-      author: "AI Generated",
-      description: "Generated by Claude from uploaded image",
-      imageUrl: image, // Use the original data URL
-      promptText: promptText,
-      favorite: false,
-      createdAt: new Date().toISOString(),
-    };
-
-    console.log('Success! Returning result with prompt length:', promptText.length);
-    console.log('=== Claude API Debug End ===');
+    console.log('Success! Prompt generated, length:', promptText.length);
+    console.log('=== API END ===');
     
-    return NextResponse.json(result);
+    return NextResponse.json({ promptText });
 
   } catch (error: any) {
-    console.error('=== Claude API Error ===');
-    console.error('Error type:', error.constructor.name);
+    console.error('=== API ERROR ===');
+    console.error('Error name:', error.constructor?.name);
     console.error('Error message:', error.message);
     console.error('Error status:', error.status);
-    console.error('Full error:', error);
-    console.error('=== End Error Debug ===');
+    console.error('Full error object:', error);
+    console.error('Stack trace:', error.stack);
+    console.error('=== END ERROR ===');
     
-    // Return more specific error messages
-    if (error.status === 401) {
-      return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
-    } else if (error.status === 429) {
-      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
-    } else if (error.message?.includes('Invalid base64')) {
-      return NextResponse.json({ error: "Invalid image format" }, { status: 400 });
-    } else {
-      return NextResponse.json({ 
-        error: "Failed to analyze image", 
-        details: error.message 
-      }, { status: 500 });
-    }
+    return NextResponse.json({ 
+      error: "Failed to analyze image", 
+      details: error.message,
+      type: error.constructor?.name 
+    }, { status: 500 });
   }
 }
