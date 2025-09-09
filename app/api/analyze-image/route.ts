@@ -1,23 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
 
-// Helper function to convert file to base64
-async function fileToBase64(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString('base64');
-  return base64;
-}
-
-// Helper function to detect image media type
-function getMediaType(file: File): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
-  const type = file.type;
-  if (type === 'image/jpeg' || type === 'image/png' || type === 'image/gif' || type === 'image/webp') {
-    return type;
-  }
-  // Default to jpeg if type is unclear
-  return 'image/jpeg';
-}
-
 export async function POST(req: NextRequest) {
   try {
     // Check if we're in test mode
