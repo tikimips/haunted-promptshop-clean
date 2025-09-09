@@ -159,9 +159,18 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-900">Promptshop</h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
-              {session.user?.name || session.user?.email}
-            </span>
+            <div className="flex items-center gap-3">
+              {session.user?.image && (
+                <img
+                  src={session.user.image}
+                  alt="Profile"
+                  className="w-8 h-8 rounded-full"
+                />
+              )}
+              <span className="text-sm text-gray-600">
+                {session.user?.name || session.user?.email}
+              </span>
+            </div>
             <button
               onClick={() => signOut()}
               className="text-sm text-gray-500 hover:text-gray-700 transition-colors px-3 py-1 rounded hover:bg-gray-100"
