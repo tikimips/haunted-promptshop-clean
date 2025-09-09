@@ -25,7 +25,7 @@ export default function Home() {
 
   useEffect(() => {
     if (status === 'loading') return
-    if (!session) router.push('/auth/signin')
+    if (!session) router.push('/signin')
   }, [session, status, router])
 
   useEffect(() => {
