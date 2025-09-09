@@ -9,10 +9,10 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 // Helper function to detect image media type
-function getMediaType(file: File): string {
+function getMediaType(file: File): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
   const type = file.type;
-  if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(type)) {
-    return type as string;
+  if (type === 'image/jpeg' || type === 'image/png' || type === 'image/gif' || type === 'image/webp') {
+    return type;
   }
   // Default to jpeg if type is unclear
   return 'image/jpeg';
