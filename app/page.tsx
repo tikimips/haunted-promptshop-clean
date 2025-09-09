@@ -69,13 +69,24 @@ export default function Home() {
     if (!selectedFile) return
 
     setIsUploading(true)
-    const formData = new FormData()
-    formData.append('image', selectedFile)
-
+    
     try {
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.readAsDataURL(selectedFile)
+      })
+
       const response = await fetch('/api/analyze-image', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: base64,
+          name: selectedFile.name
+        }),
       })
 
       if (!response.ok) {
