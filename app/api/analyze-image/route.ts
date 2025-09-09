@@ -4,14 +4,18 @@ export async function POST(request: Request) {
   try {
     const { image } = await request.json();
     
-    // Extract the base64 data (remove data:image/jpeg;base64, prefix)
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ prompt: 'API key not configured' }, { status: 500 });
+    }
+    
+    // Extract base64 data
     const base64Data = image.split(',')[1];
     
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
@@ -31,13 +35,19 @@ export async function POST(request: Request) {
               },
               {
                 type: 'text',
-                text: 'Analyze this image and generate a detailed prompt that could be used to recreate it with AI image generation tools like DALL-E, Midjourney, or Stable Diffusion. Focus on style, composition, colors, mood, and key visual elements. Be specific but concise.'
+                text: 'Analyze this image and generate a detailed prompt that could be used to recreate it with AI image generation tools. Focus on style, composition, colors, mood, and key visual elements. Be specific but concise.'
               }
             ]
           }
         ]
       })
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Anthropic API error:', errorData);
+      return NextResponse.json({ prompt: 'Failed to analyze image' }, { status: 500 });
+    }
 
     const data = await response.json();
     const prompt = data.content?.[0]?.text || 'Unable to analyze image';
