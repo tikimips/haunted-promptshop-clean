@@ -138,7 +138,7 @@ export default function Home() {
     }
 
     const data = await response.json();
-    return data.prompt || 'Unable to generate prompt for this image';
+    return data.promptText || 'Unable to generate prompt for this image';
   };
 
   const toggleFavorite = (imageId: string) => {
