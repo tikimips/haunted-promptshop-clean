@@ -24,7 +24,8 @@
     "@anthropic-ai/sdk": "^0.17.1",
     "lucide-react": "^0.263.1",
     "react-hot-toast": "^2.4.1",
-    "clsx": "^2.0.0"
+    "clsx": "^2.0.0",
+    "@supabase/supabase-js": "^2.38.4"
   },
   "devDependencies": {
     "autoprefixer": "^10.0.1",
