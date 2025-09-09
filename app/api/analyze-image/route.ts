@@ -1,78 +1,167 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { Anthropic } from '@anthropic-ai/sdk';
 
-export async function POST(request: Request) {
+// Helper function to convert file to base64
+async function fileToBase64(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString('base64');
+  return base64;
+}
+
+// Helper function to detect image media type
+function getMediaType(file: File): string {
+  const type = file.type;
+  if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(type)) {
+    return type as string;
+  }
+  // Default to jpeg if type is unclear
+  return 'image/jpeg';
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const { image } = await request.json();
-    
-    console.log('API Key exists:', !!process.env.ANTHROPIC_API_KEY);
-    
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.error('No Anthropic API key found');
-      return NextResponse.json({ prompt: 'API key not configured. Please add ANTHROPIC_API_KEY to environment variables.' }, { status: 500 });
-    }
-    
-    // Extract base64 data
-    const base64Data = image.split(',')[1];
-    console.log('Base64 data length:', base64Data?.length);
-    
-    if (!base64Data) {
-      return NextResponse.json({ prompt: 'Invalid image format' }, { status: 400 });
+    // Check if we're in test mode
+    if (process.env.TEST_MODE === 'true') {
+      console.log('TEST_MODE enabled - returning mock response');
+      const form = await req.formData();
+      const name = (form.get("name") as string) || "Test Image";
+      
+      return NextResponse.json({
+        id: crypto.randomUUID(),
+        title: name,
+        author: "Test Mode",
+        description: "Mock response for testing",
+        imageUrl: "https://via.placeholder.com/400x300",
+        promptText: "Modern minimalist design with clean lines, professional typography, and subtle color palette. Focus on white space and elegant composition.",
+        favorite: false,
+        createdAt: new Date().toISOString(),
+      });
     }
 
-    console.log('Making request to Anthropic API...');
+    // Debug logging
+    console.log('=== Claude API Debug Start ===');
+    console.log('API Key exists:', !!process.env.ANTHROPIC_API_KEY);
+    console.log('API Key prefix:', process.env.ANTHROPIC_API_KEY?.substring(0, 10) + '...');
     
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-sonnet-20240229',
-        max_tokens: 300,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: 'image/jpeg',
-                  data: base64Data
-                }
-              },
-              {
-                type: 'text',
-                text: 'Analyze this image and generate a detailed prompt that could be used to recreate it with AI image generation tools. Focus on style, composition, colors, mood, and key visual elements. Be specific but concise.'
-              }
-            ]
-          }
-        ]
-      })
+    // Parse form data
+    const form = await req.formData();
+    const name = (form.get("name") as string) || "Untitled";
+    const image = form.get("image") as File | null;
+
+    console.log('Form data received:', { 
+      name, 
+      hasImage: !!image, 
+      imageType: image?.type,
+      imageSize: image?.size 
     });
 
-    console.log('Anthropic response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Anthropic API error:', response.status, errorText);
-      return NextResponse.json({ 
-        prompt: `API Error (${response.status}): ${errorText.substring(0, 100)}...` 
-      }, { status: 500 });
+    if (!image) {
+      console.error('No image provided in form data');
+      return NextResponse.json({ error: "No image provided" }, { status: 400 });
     }
 
-    const data = await response.json();
-    console.log('Anthropic response received');
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY environment variable not set');
+      return NextResponse.json({ error: "Anthropic API key not configured" }, { status: 500 });
+    }
+
+    // Validate API key format
+    if (!process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-')) {
+      console.error('Invalid API key format - should start with sk-ant-');
+      return NextResponse.json({ error: "Invalid API key format" }, { status: 500 });
+    }
+
+    // Initialize Anthropic client
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    // Convert image to base64
+    console.log('Converting image to base64...');
+    const base64Data = await fileToBase64(image);
+    const mediaType = getMediaType(image);
     
-    const prompt = data.content?.[0]?.text || 'Unable to extract prompt from response';
+    console.log('Image processed:', {
+      base64Length: base64Data.length,
+      mediaType: mediaType,
+      estimatedSizeKB: Math.round(base64Data.length * 0.75 / 1024)
+    });
+
+    // Make API call to Claude
+    console.log('Making API call to Claude...');
+    const response = await anthropic.messages.create({
+      model: "claude-3-haiku-20240307", // Latest stable model
+      max_tokens: 300,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Analyze this image and create a detailed AI art generation prompt. Focus on visual style, composition, colors, mood, and artistic elements. Return only the prompt text - no quotes, explanations, or extra formatting."
+            },
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mediaType,
+                data: base64Data
+              }
+            }
+          ]
+        }
+      ]
+    });
+
+    console.log('Claude API response received:', {
+      hasContent: !!response.content,
+      contentLength: response.content?.length,
+      contentType: response.content?.[0]?.type
+    });
+
+    const promptText = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '';
     
-    return NextResponse.json({ prompt });
-  } catch (error) {
-    console.error('Error in analyze-image:', error);
-    return NextResponse.json({ 
-      prompt: `Server error: ${error.message}` 
-    }, { status: 500 });
+    if (!promptText) {
+      console.error('Claude returned empty or invalid content');
+      return NextResponse.json({ error: "Failed to generate prompt" }, { status: 500 });
+    }
+
+    const result = {
+      id: crypto.randomUUID(),
+      title: name,
+      author: "AI Generated",
+      description: "Generated by Claude from uploaded image",
+      imageUrl: `data:${image.type};base64,${base64Data}`,
+      promptText: promptText,
+      favorite: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    console.log('Success! Returning result with prompt length:', promptText.length);
+    console.log('=== Claude API Debug End ===');
+    
+    return NextResponse.json(result);
+
+  } catch (error: any) {
+    console.error('=== Claude API Error ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error status:', error.status);
+    console.error('Full error:', error);
+    console.error('=== End Error Debug ===');
+    
+    // Return more specific error messages
+    if (error.status === 401) {
+      return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+    } else if (error.status === 429) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    } else if (error.message?.includes('Invalid base64')) {
+      return NextResponse.json({ error: "Invalid image format" }, { status: 400 });
+    } else {
+      return NextResponse.json({ 
+        error: "Failed to analyze image", 
+        details: error.message 
+      }, { status: 500 });
+    }
   }
 }
