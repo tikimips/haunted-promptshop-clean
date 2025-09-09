@@ -15,12 +15,20 @@ interface PendingUpload {
   url: string;
 }
 
+interface Toast {
+  id: string;
+  type: 'success' | 'error';
+  message: string;
+}
+
 export default function Home() {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const [hoveredImage, setHoveredImage] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedPrompt, setGeneratedPrompt] = useState<string>('');
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Load images from localStorage on mount
   useEffect(() => {
@@ -35,6 +43,14 @@ export default function Home() {
     localStorage.setItem('promptshop-images', JSON.stringify(images));
   }, [images]);
 
+  const showToast = (type: 'success' | 'error', message: string) => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, type, message }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, 5000);
+  };
+
   const handleFileSelected = (file: File) => {
     const imageUrl = URL.createObjectURL(file);
     setPendingUpload({ file, url: imageUrl });
@@ -45,7 +61,7 @@ export default function Home() {
       URL.revokeObjectURL(pendingUpload.url);
     }
     setPendingUpload(null);
-    // Reset file input
+    setGeneratedPrompt('');
     const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
@@ -55,7 +71,7 @@ export default function Home() {
       URL.revokeObjectURL(pendingUpload.url);
     }
     setPendingUpload(null);
-    // Reset file input
+    setGeneratedPrompt('');
     const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
@@ -66,31 +82,37 @@ export default function Home() {
     setIsGenerating(true);
     
     try {
-      // Convert file to base64 for API
       const base64 = await fileToBase64(pendingUpload.file);
-      
-      // Analyze image with Claude
-      const generatedPrompt = await analyzeImage(base64);
-      
-      const newImage: UploadedImage = {
-        id: Date.now().toString(),
-        url: pendingUpload.url,
-        prompt: generatedPrompt,
-        uploadedAt: new Date().toISOString(),
-        isFavorite: false
-      };
-
-      setImages(prev => [newImage, ...prev]);
-      setPendingUpload(null);
-      
-      // Reset file input
-      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
+      const prompt = await analyzeImage(base64);
+      setGeneratedPrompt(prompt);
+      showToast('success', 'Image analyzed successfully! You can edit the prompt before saving.');
     } catch (error) {
       console.error('Error generating prompt:', error);
+      showToast('error', 'Failed to analyze image. Please try again.');
     }
     
     setIsGenerating(false);
+  };
+
+  const handleSavePrompt = () => {
+    if (!pendingUpload || !generatedPrompt.trim()) return;
+
+    const newImage: UploadedImage = {
+      id: Date.now().toString(),
+      url: pendingUpload.url,
+      prompt: generatedPrompt.trim(),
+      uploadedAt: new Date().toISOString(),
+      isFavorite: false
+    };
+
+    setImages(prev => [newImage, ...prev]);
+    setPendingUpload(null);
+    setGeneratedPrompt('');
+    
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+    
+    showToast('success', 'Image and prompt saved to your library!');
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -103,21 +125,20 @@ export default function Home() {
   };
 
   const analyzeImage = async (base64Image: string): Promise<string> => {
-    try {
-      const response = await fetch('/api/analyze-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ image: base64Image }),
-      });
+    const response = await fetch('/api/analyze-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ image: base64Image }),
+    });
 
-      const data = await response.json();
-      return data.prompt || 'Unable to generate prompt for this image';
-    } catch (error) {
-      console.error('Error analyzing image:', error);
-      return 'Error analyzing image';
+    if (!response.ok) {
+      throw new Error('Failed to analyze image');
     }
+
+    const data = await response.json();
+    return data.prompt || 'Unable to generate prompt for this image';
   };
 
   const toggleFavorite = (imageId: string) => {
@@ -128,6 +149,7 @@ export default function Home() {
 
   const copyPrompt = (prompt: string) => {
     navigator.clipboard.writeText(prompt);
+    showToast('success', 'Prompt copied to clipboard!');
   };
 
   const filteredImages = filter === 'favorites' 
@@ -136,6 +158,22 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Toast Container */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${
+              toast.type === 'success' 
+                ? 'bg-green-600 text-white' 
+                : 'bg-red-600 text-white'
+            }`}
+          >
+            {toast.message}
+          </div>
+        ))}
+      </div>
+
       <main className="max-w-7xl mx-auto py-8 px-4">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Promptshop</h1>
@@ -146,13 +184,21 @@ export default function Home() {
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           {!pendingUpload ? (
             <UploadComponent onFileSelected={handleFileSelected} />
-          ) : (
+          ) : !generatedPrompt ? (
             <ConfirmationComponent 
               imageUrl={pendingUpload.url}
               onChooseAnother={handleChooseAnother}
               onGeneratePrompt={handleGeneratePrompt}
               onCancel={handleCancel}
               isGenerating={isGenerating}
+            />
+          ) : (
+            <PromptEditComponent
+              imageUrl={pendingUpload.url}
+              prompt={generatedPrompt}
+              onPromptChange={setGeneratedPrompt}
+              onSave={handleSavePrompt}
+              onCancel={handleCancel}
             />
           )}
         </div>
@@ -369,6 +415,65 @@ function ConfirmationComponent({
             onClick={onCancel}
             disabled={isGenerating}
             className="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Prompt Edit Component
+function PromptEditComponent({
+  imageUrl,
+  prompt,
+  onPromptChange,
+  onSave,
+  onCancel
+}: {
+  imageUrl: string;
+  prompt: string;
+  onPromptChange: (prompt: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex gap-6">
+      <div className="w-48 h-48 flex-shrink-0">
+        <img 
+          src={imageUrl} 
+          alt="Preview" 
+          className="w-full h-full object-cover rounded-lg"
+        />
+      </div>
+      
+      <div className="flex-1 space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Generated Prompt
+          </label>
+          <textarea
+            value={prompt}
+            onChange={(e) => onPromptChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            rows={4}
+            placeholder="Edit the generated prompt..."
+          />
+        </div>
+        
+        <div className="flex space-x-3">
+          <button
+            onClick={onSave}
+            disabled={!prompt.trim()}
+            className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Save to Library
+          </button>
+          
+          <button
+            onClick={onCancel}
+            className="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
