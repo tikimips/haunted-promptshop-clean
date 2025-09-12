@@ -69,17 +69,39 @@ export default function Home() {
     if (!selectedFile) return
 
     setIsUploading(true)
-    const formData = new FormData()
-    formData.append('image', selectedFile)
-
+    
     try {
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result)
+          } else {
+            reject(new Error('Failed to read file as string'))
+          }
+        }
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(selectedFile)
+      })
+
+      // Ensure proper JSON formatting
+      const requestData = {
+        image: base64,
+        name: selectedFile.name || 'uploaded_image'
+      }
+
       const response = await fetch('/api/analyze-image', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to analyze image')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to analyze image')
       }
 
       const data = await response.json()
