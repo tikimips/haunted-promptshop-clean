@@ -15,6 +15,11 @@ export default function Home() {
   const { data: session, status } = useSession()
   const router = useRouter()
   
+  // Add password protection state
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false)
+  const [passwordInput, setPasswordInput] = useState('')
+  const SITE_PASSWORD = 'promptshop2025' // Change this to your desired password
+  
   // Your existing Promptshop state
   const [prompts, setPrompts] = useState<PromptData[]>([])
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -27,6 +32,57 @@ export default function Home() {
     if (status === 'loading') return
     if (!session) router.push('/signin')
   }, [session, status, router])
+
+  // Password verification handler
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (passwordInput === SITE_PASSWORD) {
+      setIsPasswordVerified(true)
+    } else {
+      alert('Incorrect password')
+      setPasswordInput('')
+    }
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session) return null
+
+  // Password protection screen
+  if (!isPasswordVerified) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">Enter Password</h2>
+          <form onSubmit={handlePasswordSubmit}>
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              placeholder="Enter site password"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none mb-4"
+              required
+            />
+            <button
+              type="submit"
+              className="w-full bg-orange-500 text-white px-4 py-3 rounded-lg hover:bg-orange-600 transition-colors"
+            >
+              Access Site
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     // Load prompts from localStorage on component mount
@@ -209,6 +265,16 @@ export default function Home() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Review & Generate Prompt</h2>
               
+              {selectedFile && !previewUrl && (
+                <div className="mb-6">
+                  <img
+                    src={URL.createObjectURL(selectedFile)}
+                    alt="Preview"
+                    className="w-full max-w-md mx-auto rounded-lg border border-gray-200"
+                  />
+                </div>
+              )}
+
               {previewUrl && (
                 <div className="mb-6">
                   <img
@@ -312,9 +378,13 @@ export default function Home() {
                     <div key={prompt.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden group">
                       <div className="relative">
                         <img
-                          src={prompt.imageUrl}
+                          src={prompt.imageUrl || prompt.image_url}
                           alt="Prompt image"
                           className="w-full h-48 object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y3ZjdmNyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTk5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBub3QgZm91bmQ8L3RleHQ+PC9zdmc+';
+                          }}
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
                           <div className="flex gap-2">
